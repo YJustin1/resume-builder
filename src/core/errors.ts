@@ -33,8 +33,9 @@ export class ServiceError extends Error {
   readonly status: number;
   readonly affectedResumes?: ResumeSummary[];
 
-  constructor(code: ErrorCode, message: string, affectedResumes?: ResumeSummary[]) {
-    super(message);
+  constructor(code: ErrorCode, message: string, affectedResumes?: ResumeSummary[], cause?: unknown) {
+    // `cause` is for server-side logging only; it is never sent to clients.
+    super(message, cause === undefined ? undefined : { cause });
     this.name = 'ServiceError';
     this.code = code;
     this.status = STATUS[code];
