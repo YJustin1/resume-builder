@@ -8,7 +8,9 @@
 //
 // Contention with a live holder is always a refusal, never a wait: before
 // trying, the caller reads the lock's epoch (a counter every holder
-// increments). That read is refused while anyone holds the lock. If the epoch
+// increments and commits as soon as it acquires the lock; in SQLite's
+// EXCLUSIVE locking mode the connection keeps its lock after that commit, so
+// the increment survives even if the holder is killed later). That read is refused while anyone holds the lock. If the epoch
 // has changed by the time the caller acquires the lock, someone held it in
 // between, so the caller refuses too. The short retry loop below only
 // resolves two processes starting at the same instant (both read the same
@@ -105,8 +107,11 @@ export function acquireDemoLock(demoDir: string, owner: 'server' | 'seed'): () =
     held.exec('CREATE TABLE IF NOT EXISTS epoch (n INTEGER NOT NULL)');
     held.exec('DELETE FROM epoch');
     held.prepare('INSERT INTO epoch (n) VALUES (?)').run(now + 1);
+    // Commit now, before anything is published: the lock stays held
+    // (locking_mode=EXCLUSIVE keeps it until the connection closes).
+    held.exec('COMMIT');
   } catch (error) {
-    held.exec('ROLLBACK');
+    if (held.isTransaction) held.exec('ROLLBACK');
     held.close();
     throw error;
   }
@@ -115,10 +120,6 @@ export function acquireDemoLock(demoDir: string, owner: 'server' | 'seed'): () =
   return () => {
     if (released) return;
     released = true;
-    try {
-      held.exec('COMMIT'); // persists the new epoch
-    } finally {
-      held.close();
-    }
+    held.close(); // releases the OS lock; the epoch was committed at acquisition
   };
 }

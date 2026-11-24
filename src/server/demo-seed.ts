@@ -76,8 +76,12 @@ try {
   refuseIfSidecars(file); // again, immediately before publishing
   renameSync(temp, file); // the commit point: atomic replacement on the same filesystem
   temp = undefined;
-  testPause('AFTER_PUBLISH');
   process.stdout.write(`demo database ready: ${file} (resumes: ${names.join(', ')})\n`);
+  try {
+    testPause('AFTER_PUBLISH'); // test-only; after publication nothing may turn into a refusal
+  } catch (error) {
+    process.stderr.write(`warning: ${(error as Error).message}\n`);
+  }
   try {
     releaseLock();
   } catch (error) {

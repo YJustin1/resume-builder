@@ -417,3 +417,36 @@ describe('demo lock boundaries (verification round 2)', () => {
     expect(bytes(demoFile)).toBe(published);
   }, 60_000);
 });
+
+describe('demo lock epoch survives a killed publisher (verification round 3)', () => {
+  it('contender paused after its probe; publisher killed after its rename; contender exits 2, bytes unchanged', async () => {
+    const root = makeRoot();
+    expect(seed(root).status).toBe(0);
+    const probeMarker = join(tempDir(), 'before-lock');
+    const publishMarker = join(tempDir(), 'after-publish');
+    const env = (extra: Record<string, string>) => baseEnv(root, extra);
+    const waitFor = async (path: string) => {
+      for (let i = 0; i < 500 && !existsSync(path); i++) await new Promise((r) => setTimeout(r, 20));
+      expect(existsSync(path), path).toBe(true);
+    };
+
+    const contender = spawn(process.execPath, [SEED, '--reset'], { env: env({ RB_TEST_PAUSE_BEFORE_LOCK: probeMarker }) });
+    let contenderErr = '';
+    contender.stderr.on('data', (d) => (contenderErr += d));
+    const contenderExit = new Promise<number | null>((r) => contender.once('exit', (c) => r(c)));
+    await waitFor(probeMarker); // contender has read the epoch
+
+    const publisher = spawn(process.execPath, [SEED, '--reset'], { env: env({ RB_TEST_PAUSE_AFTER_PUBLISH: publishMarker }) });
+    const publisherExit = new Promise<void>((r) => publisher.once('exit', () => r()));
+    await waitFor(publishMarker); // publisher renamed its database, still holds the lock
+    publisher.kill('SIGKILL');
+    await publisherExit;
+    const demoFile = join(root, '.demo', 'demo.sqlite');
+    const published = bytes(demoFile);
+
+    rmSync(probeMarker);
+    expect(await contenderExit).toBe(2);
+    expect(contenderErr).toMatch(/held the demo lock while this seed was starting/);
+    expect(bytes(demoFile)).toBe(published);
+  }, 60_000);
+});
