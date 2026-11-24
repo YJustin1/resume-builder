@@ -114,10 +114,16 @@ export function readIntegrityProblems(db: Db): Map<string, string[]> {
   // Selection rows whose references are broken (possible only if foreign keys
   // were off when they were written); without this they would be silently
   // skipped by readConfiguration.
-  const violations = db.prepare('PRAGMA foreign_key_check').all() as { table: string; rowid: number; parent: string }[];
+  // Row IDs (and row values) are read as bigint so a row at SQLite's maximum
+  // rowid cannot make the read throw and block unrelated resumes.
+  const check = db.prepare('PRAGMA foreign_key_check');
+  check.setReadBigInts(true);
+  const violations = check.all() as { table: string; rowid: bigint; parent: string }[];
   for (const v of violations) {
     if (!['resume_entries', 'resume_bullets', 'resume_skills'].includes(v.table)) continue;
-    const row = db.prepare(`SELECT * FROM ${v.table} WHERE rowid = ?`).get(v.rowid) as Record<string, unknown> | undefined;
+    const select = db.prepare(`SELECT * FROM ${v.table} WHERE rowid = ?`);
+    select.setReadBigInts(true);
+    const row = select.get(v.rowid) as Record<string, unknown> | undefined;
     if (!row) continue;
     const detail = Object.entries(row)
       .filter(([k]) => k !== 'resume_id' && k !== 'sort_index')

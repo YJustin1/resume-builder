@@ -30,10 +30,17 @@ function lstatOrNull(path: string) {
 
 /** Create `dir` (0700) if absent; if present it must be a real directory, not a symlink. */
 function ensureRealDirectory(dir: string, what: string): void {
-  const st = lstatOrNull(dir);
+  let st = lstatOrNull(dir);
   if (!st) {
-    mkdirSync(dir, { mode: 0o700 });
-    return;
+    try {
+      mkdirSync(dir, { mode: 0o700 });
+      return;
+    } catch (error) {
+      // Another process created it between our lstat and mkdir: validate theirs.
+      if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
+      st = lstatOrNull(dir);
+      if (!st) throw error;
+    }
   }
   if (st.isSymbolicLink() || !st.isDirectory()) throw new PathError(`${what} (${dir}) must be a real directory, not a symlink`);
 }

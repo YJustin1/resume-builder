@@ -134,7 +134,7 @@ describe('demo:seed command', () => {
     expect(run.status).toBe(2);
     expect(run.stderr).toMatch(/variants\[10\]: variant\.text must not be empty/);
     expect(bytes(demoFile)).toBe(before);
-    expect(readdirSync(join(root, '.demo'))).toEqual(['demo.sqlite']);
+    expect(readdirSync(join(root, '.demo')).filter((f) => f !== 'lock.sqlite')).toEqual(['demo.sqlite']);
   });
 
   it('3: a symlinked demo.sqlite is refused and its target untouched', () => {
@@ -223,9 +223,11 @@ describe('server command, personal mode', () => {
 
 describe('demo lock (review round 2)', () => {
   function seedAsync(root: string, args: string[] = []) {
-    return new Promise<number | null>((resolve) => {
+    return new Promise<{ code: number | null; err: string }>((resolve) => {
       const child = spawn(process.execPath, [SEED, ...args], { env: baseEnv(root) });
-      child.once('exit', (code) => resolve(code));
+      let err = '';
+      child.stderr.on('data', (d) => (err += d));
+      child.once('exit', (code) => resolve({ code, err }));
     });
   }
 
@@ -238,13 +240,12 @@ describe('demo lock (review round 2)', () => {
     try {
       const run = seed(root);
       expect(run.status).toBe(2);
-      expect(run.stderr).toMatch(/demo database is in use \(\d+ server\)/);
+      expect(run.stderr).toMatch(/demo database is in use by another demo server or seed/);
       expect(bytes(demoFile)).toBe(before);
       expect((await fetch(`${server.url}/api/resumes/r-security`)).status).toBe(200);
     } finally {
       await server.stop();
     }
-    expect(existsSync(join(root, '.demo', 'lock'))).toBe(false);
     expect(seed(root).status).toBe(0);
   }, 60_000);
 
@@ -262,17 +263,45 @@ describe('demo lock (review round 2)', () => {
   it('exactly one of two concurrent first seeds (without --reset) succeeds', async () => {
     for (let attempt = 0; attempt < 3; attempt++) {
       const root = makeRoot();
-      const codes = await Promise.all([seedAsync(root), seedAsync(root)]);
-      expect(codes.sort()).toEqual([0, 2]);
+      const runs = await Promise.all([seedAsync(root), seedAsync(root)]);
+      expect(runs.map((r) => r.code).sort(), runs.map((r) => r.err).join(' | ')).toEqual([0, 2]);
     }
   }, 60_000);
 
-  it('a stale lock from a dead process is reclaimed', () => {
+  it('a demo server killed with SIGKILL leaves no lock behind (the OS releases it)', async () => {
+    const root = makeRoot();
+    expect(seed(root).status).toBe(0);
+    const child = spawn(process.execPath, [MAIN, '--demo'], { env: baseEnv(root) });
+    await new Promise<void>((resolve) => child.stdout.on('data', (d) => String(d).includes('listening') && resolve()));
+    expect(seed(root).status).toBe(2);
+    await new Promise<void>((resolve) => {
+      child.once('exit', () => resolve());
+      child.kill('SIGKILL');
+    });
+    expect(seed(root).status).toBe(0);
+  }, 60_000);
+
+  it('a symlinked lock file is refused', () => {
     const root = makeRoot();
     mkdirSync(join(root, '.demo'));
-    writeFileSync(join(root, '.demo', 'lock'), '999999 seed\n');
+    const outside = join(tempDir(), 'x.sqlite');
+    writeFileSync(outside, '');
+    symlinkSync(outside, join(root, '.demo', 'lock.sqlite'));
+    expect(seed(root).status).toBe(2);
+  });
+
+  it('a sidecar that SQLite does not consume after recovery refuses the reset and preserves the old database', () => {
+    const root = makeRoot();
     expect(seed(root).status).toBe(0);
-    expect(existsSync(join(root, '.demo', 'lock'))).toBe(false);
+    const demoFile = join(root, '.demo', 'demo.sqlite');
+    const before = bytes(demoFile);
+    // SQLite itself removes a stray -wal or -journal on open; a stray -shm survives.
+    writeFileSync(`${demoFile}-shm`, 'stray');
+    const run = seed(root);
+    expect(run.status).toBe(2);
+    expect(run.stderr).toMatch(/sidecar files remain after recovery/);
+    expect(bytes(demoFile)).toBe(before);
+    expect(readFileSync(`${demoFile}-shm`, 'utf8')).toBe('stray');
   });
 });
 

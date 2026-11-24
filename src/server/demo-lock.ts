@@ -1,59 +1,58 @@
 // One lock for the demo database (SPEC §9 "Demo lock"): held by a running demo
 // server for its lifetime and by `demo:seed` for its whole check-build-publish
-// sequence. It is created atomically (O_EXCL), so two seeds can never both
-// publish, and a reset can never replace a database a live server has open.
-// A lock left by a dead process (its PID no longer exists) is reclaimed.
+// sequence.
+//
+// The lock is an exclusive SQLite transaction on `.demo/lock.sqlite`. SQLite
+// uses OS file locks, which the kernel releases when the holding process
+// exits or dies, so there is no stale state to reclaim and no window in which
+// one process can remove another's lock.
 
-import { closeSync, openSync, readFileSync, rmSync, writeSync } from 'node:fs';
+import { lstatSync } from 'node:fs';
 import { join } from 'node:path';
+import { DatabaseSync } from 'node:sqlite';
 import { PathError } from './paths.ts';
 
-const alive = (pid: number) => {
-  try {
-    process.kill(pid, 0);
-    return true;
-  } catch (error) {
-    return (error as NodeJS.ErrnoException).code === 'EPERM';
-  }
-};
-
-function tryCreate(lock: string, owner: string): boolean {
-  try {
-    const fd = openSync(lock, 'wx', 0o600); // fails if the path exists, including as a symlink
-    writeSync(fd, `${process.pid} ${owner}\n`);
-    closeSync(fd);
-    return true;
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'EEXIST') return false;
-    throw error;
-  }
-}
-
-/** Acquire `<demoDir>/lock` or throw PathError naming the holder. Returns a release function. */
+/** Acquire the demo lock or throw PathError. Returns an idempotent release function. */
 export function acquireDemoLock(demoDir: string, owner: 'server' | 'seed'): () => void {
-  const lock = join(demoDir, 'lock');
-  if (!tryCreate(lock, owner)) {
-    let holder = '';
-    try {
-      holder = readFileSync(lock, 'utf8').trim();
-    } catch {
-      /* unreadable: treat as held */
+  const path = join(demoDir, 'lock.sqlite');
+  try {
+    const st = lstatSync(path);
+    if (st.isSymbolicLink() || !st.isFile() || st.nlink !== 1) {
+      throw new PathError(`${path} must be a regular file (not a symlink or hard link)`);
     }
-    const pid = Number(holder.split(' ')[0]);
-    if (Number.isInteger(pid) && pid > 0 && !alive(pid)) {
-      rmSync(lock, { force: true }); // stale lock from a process that no longer exists
-      if (tryCreate(lock, owner)) return release(lock);
-    }
-    throw new PathError(`the demo database is in use (${holder || 'lock held'}); stop the demo server or wait for the seed to finish`);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
   }
-  return release(lock);
-}
-
-function release(lock: string): () => void {
-  let done = false;
+  // Two processes opening a fresh lock file at the same moment can both hold
+  // SHARED and both fail to upgrade (each sees the other as busy). Retry a few
+  // times with random backoff so one of them wins; a lock that is genuinely
+  // held (a running demo server) still refuses after about a second.
+  const deadline = Date.now() + 1000;
+  let db: DatabaseSync;
+  for (;;) {
+    db = new DatabaseSync(path, { timeout: 0 });
+    try {
+      db.exec('PRAGMA locking_mode = EXCLUSIVE');
+      db.exec('BEGIN EXCLUSIVE');
+      break;
+    } catch (error) {
+      db.close();
+      if (!/locked|busy/i.test(String(error))) throw error;
+      if (Date.now() > deadline) {
+        throw new PathError(`the demo database is in use by another demo server or seed (requested by ${owner}); stop it or wait for it to finish`);
+      }
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 10 + Math.floor(Math.random() * 40));
+    }
+  }
+  let released = false;
+  const held = db;
   return () => {
-    if (done) return;
-    done = true;
-    rmSync(lock, { force: true });
+    if (released) return;
+    released = true;
+    try {
+      held.exec('ROLLBACK');
+    } finally {
+      held.close();
+    }
   };
 }

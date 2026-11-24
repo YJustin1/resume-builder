@@ -153,3 +153,18 @@ describe('round 2 #12 required export fields', () => {
     expect(res.body.error.message).toMatch(/resume\.education\[0\]\.institution is missing/);
   });
 });
+
+describe('round 3 #15 a selection row at the maximum rowid cannot block other resumes', () => {
+  it('Security fails with the specific integrity error; Engineering still exports', async () => {
+    const api = new Api(freshLibrary('primary.input.json'));
+    api.lib.db.exec('PRAGMA foreign_keys = OFF');
+    api.lib.db.exec(
+      "INSERT INTO resume_bullets (rowid, resume_id, entry_id, accomplishment_id, variant_id, sort_index) VALUES (9223372036854775807, 'r-security', 'e3', 'a5', 'v51', 0)",
+    );
+    api.lib.db.exec('PRAGMA foreign_keys = ON');
+    const res = await api.exportJson('r-security');
+    expect([res.status, res.code]).toEqual([500, 'ASSEMBLY_FAILED']);
+    expect(res.body.error.message).toMatch(/references a missing resume_entries row/);
+    expect((await api.exportJson('r-engineering')).body).toEqual(readFixture('engineering.expected.json'));
+  });
+});
