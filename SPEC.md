@@ -497,10 +497,11 @@ Unit and integration tests remain the correctness oracle.
 
 - **Extraction:**
   - Use `pdfjs-dist` (pinned) on the actual PDF bytes, never on the HTML or JSON.
-  - For each page, collect the text runs and sort them by position: descending y, with runs whose y values differ by ≤ 2 pt treated as one line and ordered by ascending x.
-  - Concatenate the pages in order.
+  - For each page, collect the non-empty text runs and sort them by position: descending y, with runs whose y values differ by ≤ 2 pt treated as one line and ordered by ascending x.
+  - **Joining runs:** on the same line, append a run with **no separator** when it abuts the previous one (`|x − (prevX + prevWidth)| < 1.5 pt`), and with one space otherwise. Between lines and between pages, insert one space. Concatenate the pages in order.
+    - Why: with fallback fonts (offline), Chrome emits ligatures such as `fi` as separate abutting runs, and joining every run with a space produced `fi ndings` (docs/debugging.md, Phase 0). Upstream `@repo/resume-pdf` `readPdf` uses the same adjacency rule.
   - Why position order: raw content-stream order is not reading order for Even (work highlights are emitted after later sections, EVALUATION.md E6).
-- **Normalization:** collapse whitespace runs, including line and page breaks, to one space, then trim. Preserve case, words and punctuation. Document any extractor-specific artefact you strip; never strip text broadly.
+- **Normalization:** apply Unicode NFKC (decomposes ligature glyphs such as `ﬁ`; an extractor artefact), collapse whitespace runs, including line and page breaks, to one space, then trim. Preserve case, words and punctuation. Document any extractor-specific artefact you strip; never strip text broadly.
 - **Assertions:**
   - `orderedBullets` and `orderedHeaders`: each string occurs exactly once, at increasing offsets.
   - `orderedSequence`: strictly increasing offsets of each string's single occurrence. This shows that each bullet sits under its own entry and that sections are in the theme's order.
