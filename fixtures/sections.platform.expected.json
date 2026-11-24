@@ -1,0 +1,43 @@
+{
+  "basics": {
+    "name": "Sample Candidate",
+    "label": "Software Engineer",
+    "email": "sample@example.com"
+  },
+  "work": [
+    {
+      "name": "Lakeside Systems",
+      "position": "Platform Intern",
+      "startDate": "2024-06",
+      "endDate": "2024-08",
+      "highlights": [
+        "Wrote runbooks for the internal deployment platform.",
+        "Migrated build pipelines to a shared container base image."
+      ]
+    }
+  ],
+  "education": [
+    {
+      "institution": "Sample University",
+      "area": "Computer Science",
+      "studyType": "BS",
+      "startDate": "2021-08",
+      "endDate": "2025-05"
+    }
+  ],
+  "projects": [
+    {
+      "name": "Ledger Tool",
+      "url": "https://example.com/ledger",
+      "startDate": "2024-01",
+      "highlights": [
+        "Implemented double-entry validation for household budgets.",
+        "Added CSV import with schema checks."
+      ]
+    }
+  ],
+  "skills": [
+    { "name": "TypeScript", "keywords": ["Node.js", "React"] },
+    { "name": "SQL", "level": "Intermediate" }
+  ]
+}

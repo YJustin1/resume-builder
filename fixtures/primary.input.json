@@ -1,0 +1,168 @@
+{
+  "profile": {
+    "name": "Sample Candidate",
+    "email": "sample@example.com",
+    "education": [],
+    "skills": []
+  },
+  "experiences": [
+    {
+      "id": "e1",
+      "name": "Northwind Lab",
+      "position": "Research Intern",
+      "location": "Sample City",
+      "startDate": "2025-05-01",
+      "endDate": "2025-08-01"
+    },
+    {
+      "id": "e2",
+      "name": "Harbor Studio",
+      "position": "Software Intern",
+      "startDate": "2024-05-01",
+      "endDate": "2024-08-01"
+    },
+    {
+      "id": "e3",
+      "name": "Unused Lab",
+      "position": "Lab Assistant"
+    }
+  ],
+  "accomplishments": [
+    {
+      "id": "a1",
+      "experienceId": "e1",
+      "fact": "Analyzed service request telemetry and alert patterns.",
+      "tags": [
+        "security",
+        "telemetry"
+      ]
+    },
+    {
+      "id": "a2",
+      "experienceId": "e1",
+      "fact": "Collected and documented access review evidence using automation.",
+      "tags": [
+        "access",
+        "automation"
+      ]
+    },
+    {
+      "id": "a3",
+      "experienceId": "e2",
+      "fact": "Added automated regression checks for validation logic.",
+      "tags": [
+        "testing"
+      ]
+    },
+    {
+      "id": "a4",
+      "experienceId": "e2",
+      "fact": "Updated a checklist used for internal releases.",
+      "tags": [
+        "deployment"
+      ]
+    },
+    {
+      "id": "a5",
+      "experienceId": "e3",
+      "fact": "Prepared written lab equipment instructions.",
+      "tags": []
+    }
+  ],
+  "variants": [
+    {
+      "id": "v11",
+      "accomplishmentId": "a1",
+      "text": "Reviewed alert patterns to identify suspicious requests."
+    },
+    {
+      "id": "v12",
+      "accomplishmentId": "a1",
+      "text": "Built a request analysis workflow for service telemetry."
+    },
+    {
+      "id": "v21",
+      "accomplishmentId": "a2",
+      "text": "Documented access review findings for the team."
+    },
+    {
+      "id": "v22",
+      "accomplishmentId": "a2",
+      "text": "Automated collection of access review evidence."
+    },
+    {
+      "id": "v31",
+      "accomplishmentId": "a3",
+      "text": "Added regression tests for data validation."
+    },
+    {
+      "id": "v32",
+      "accomplishmentId": "a3",
+      "text": "Improved reliability with automated validation tests."
+    },
+    {
+      "id": "v41",
+      "accomplishmentId": "a4",
+      "text": "Maintained an internal deployment checklist."
+    },
+    {
+      "id": "v51",
+      "accomplishmentId": "a5",
+      "text": "Wrote a guide for lab equipment setup."
+    }
+  ],
+  "resumes": [
+    {
+      "id": "r-security",
+      "name": "Security",
+      "experiences": [
+        {
+          "experienceId": "e1",
+          "bullets": [
+            {
+              "accomplishmentId": "a2",
+              "variantId": "v21"
+            },
+            {
+              "accomplishmentId": "a1",
+              "variantId": "v11"
+            }
+          ]
+        },
+        {
+          "experienceId": "e2",
+          "bullets": [
+            {
+              "accomplishmentId": "a3",
+              "variantId": "v31"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "r-engineering",
+      "name": "Engineering",
+      "experiences": [
+        {
+          "experienceId": "e2",
+          "bullets": [
+            {
+              "accomplishmentId": "a3",
+              "variantId": "v32"
+            }
+          ]
+        },
+        {
+          "experienceId": "e1",
+          "bullets": [
+            {
+              "accomplishmentId": "a1",
+              "variantId": "v12"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

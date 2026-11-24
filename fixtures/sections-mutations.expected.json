@@ -1,0 +1,114 @@
+{
+  "input": "sections.input.json",
+  "convention": "Same as primary-mutations.expected.json: each case starts from a fresh load; \"file:<name>\" means deep equality with that file.",
+  "cases": [
+    {
+      "case": "T19a",
+      "description": "Renaming a shared skill updates every resume that selects it.",
+      "steps": [
+        {
+          "action": "editSkill",
+          "id": "s2",
+          "patch": { "name": "PostgreSQL" },
+          "status": 200,
+          "expectedImpact": [
+            { "id": "r-data", "name": "Data" },
+            { "id": "r-platform", "name": "Platform" }
+          ]
+        }
+      ],
+      "expectedSkills": {
+        "r-platform": [
+          { "name": "TypeScript", "keywords": ["Node.js", "React"] },
+          { "name": "PostgreSQL", "level": "Intermediate" }
+        ],
+        "r-data": [
+          { "name": "PostgreSQL", "level": "Intermediate" },
+          { "name": "Rust" }
+        ]
+      }
+    },
+    {
+      "case": "T19b",
+      "description": "Reordering and replacing skills in one resume affects only that resume.",
+      "steps": [
+        {
+          "action": "saveResume",
+          "id": "r-platform",
+          "payload": {
+            "name": "Platform",
+            "experiences": [
+              {
+                "experienceId": "w1",
+                "bullets": [
+                  { "accomplishmentId": "aw2", "variantId": "vw21" },
+                  { "accomplishmentId": "aw1", "variantId": "vw11" }
+                ]
+              }
+            ],
+            "projects": [
+              {
+                "projectId": "p1",
+                "bullets": [
+                  { "accomplishmentId": "ap1", "variantId": "vp11" },
+                  { "accomplishmentId": "ap2", "variantId": "vp21" }
+                ]
+              }
+            ],
+            "skills": ["s3", "s1"]
+          },
+          "status": 200
+        }
+      ],
+      "expectedSkills": {
+        "r-platform": [
+          { "name": "Rust" },
+          { "name": "TypeScript", "keywords": ["Node.js", "React"] }
+        ]
+      },
+      "expected": { "r-data": "file:sections.data.expected.json" }
+    },
+    {
+      "case": "T19c",
+      "description": "A resume that selects no skills and no projects omits both sections; work is still present.",
+      "steps": [
+        {
+          "action": "saveResume",
+          "id": "r-data",
+          "payload": {
+            "name": "Data",
+            "experiences": [
+              { "experienceId": "w2", "bullets": [{ "accomplishmentId": "aw3", "variantId": "vw31" }] }
+            ],
+            "projects": [],
+            "skills": []
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "r-data": {
+          "basics": { "name": "Sample Candidate", "label": "Software Engineer", "email": "sample@example.com" },
+          "work": [
+            {
+              "name": "Ridge Analytics",
+              "position": "Data Intern",
+              "startDate": "2023-06",
+              "highlights": ["Built dashboards summarizing weekly data quality checks."]
+            }
+          ],
+          "education": [
+            {
+              "institution": "Sample University",
+              "area": "Computer Science",
+              "studyType": "BS",
+              "startDate": "2021-08",
+              "endDate": "2025-05"
+            }
+          ]
+        },
+        "r-platform": "file:sections.platform.expected.json"
+      }
+    }
+  ]
+}

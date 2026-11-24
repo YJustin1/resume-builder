@@ -1,0 +1,124 @@
+{
+  "input": "primary.input.json",
+  "convention": "Fresh load; edit the variant text, export r-security as JSON and PDF. JSON must hold the text exactly as entered. PDF text is read with the \u00a77.3 extractor and normalization.",
+  "cases": [
+    {
+      "case": "T16",
+      "description": "HTML-like text is escaped, never executed or parsed as markup.",
+      "edit": {
+        "type": "variant",
+        "id": "v11",
+        "text": "Reviewed <script>alert(1)</script> tags & input."
+      },
+      "expectedJsonHighlight": "Reviewed <script>alert(1)</script> tags & input.",
+      "pdfMustContain": [
+        "Reviewed <script>alert(1)</script> tags & input."
+      ],
+      "htmlMustNotContain": [
+        "<script>alert(1)</script>"
+      ]
+    },
+    {
+      "case": "T16b",
+      "status": "known limitation (decision D9)",
+      "description": "JSON Resume 1.11 declares inline Markdown in highlights and the theme renders it, so Markdown markers are not printed literally.",
+      "edit": {
+        "type": "variant",
+        "id": "v11",
+        "text": "Used **bold** markers and `code` spans."
+      },
+      "expectedJsonHighlight": "Used **bold** markers and `code` spans.",
+      "pdfMustContain": [
+        "Used bold markers and code spans."
+      ],
+      "pdfMustNotContain": [
+        "**",
+        "`"
+      ]
+    },
+    {
+      "case": "T26",
+      "description": "URL, link and asset policy (SPEC \u00a73.5).",
+      "steps": [
+        {
+          "action": "editVariant",
+          "id": "v11",
+          "text": "Image ![alt text](http://127.0.0.1:9/probe.png) here.",
+          "status": 400,
+          "code": "INVALID_INPUT",
+          "expectedAfterThisStep": {
+            "r-security": "file:security.expected.json"
+          }
+        },
+        {
+          "action": "editVariant",
+          "id": "v11",
+          "text": "Nested ![a [b] c](http://127.0.0.1:9/probe.png) image.",
+          "status": 400,
+          "code": "INVALID_INPUT",
+          "note": "defeats a simple bracket regex; micromark 2.11.4 renders it as <img> (EVALUATION.md E14)"
+        },
+        {
+          "action": "editVariant",
+          "id": "v11",
+          "text": "Image ![alt text][ref] here.",
+          "status": 200,
+          "note": "No reference definition can exist in a single-line field, so micromark renders this as literal text, not an image; the policy rejects only syntax that renders an image (SPEC \u00a73.5).",
+          "expectedJsonHighlight": "Image ![alt text][ref] here.",
+          "printedHtmlMustNotContainElements": [
+            "img"
+          ],
+          "pdfMustContain": [
+            "Image ![alt text][ref] here."
+          ]
+        },
+        {
+          "action": "editExperience",
+          "id": "e1",
+          "patch": {
+            "url": "ftp://example.com/x"
+          },
+          "status": 400,
+          "code": "INVALID_INPUT"
+        },
+        {
+          "action": "editVariant",
+          "id": "v11",
+          "text": "Script [click](javascript:alert(1)) and data [d](data:text/html,hi) and web [site](https://example.com/page) links.",
+          "status": 200,
+          "expectedJsonHighlight": "Script [click](javascript:alert(1)) and data [d](data:text/html,hi) and web [site](https://example.com/page) links.",
+          "printedHtmlHrefs": {
+            "allowedNonEmpty": [
+              "https://example.com/page"
+            ],
+            "mustNotContain": [
+              "javascript:",
+              "data:text/html"
+            ]
+          },
+          "printedHtmlMustNotContainElements": [
+            "img",
+            "iframe",
+            "object",
+            "embed",
+            "video"
+          ],
+          "pdfMustContain": [
+            "Script click and data d and web site links."
+          ]
+        },
+        {
+          "action": "directSqlUpdate",
+          "sql": "UPDATE variants SET text = 'Bypass ![x](http://127.0.0.1:9/probe.png) row.' WHERE id = 'v11'",
+          "then": {
+            "action": "exportPdf",
+            "id": "r-security",
+            "status": 409,
+            "code": "CONTENT_POLICY_VIOLATION",
+            "printerInvoked": false
+          }
+        }
+      ]
+    }
+  ]
+}

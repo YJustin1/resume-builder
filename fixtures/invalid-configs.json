@@ -1,0 +1,132 @@
+{
+  "case": "T08",
+  "convention": "Each request is a separate PUT /api/resumes/:id against a fresh load of its input. Every request must be rejected with the listed status and code, and the target resume's stored configuration and export must be unchanged afterwards. Rule: an ID that exists but is used in the wrong role or under the wrong parent is INVALID_INPUT; an ID that does not exist at all is INVALID_REFERENCE.",
+  "requests": [
+    {
+      "id": "T08a",
+      "input": "primary.input.json",
+      "resume": "r-security",
+      "description": "variant v31 does not belong to accomplishment a1",
+      "payload": {
+        "name": "Security",
+        "experiences": [{ "experienceId": "e1", "bullets": [{ "accomplishmentId": "a1", "variantId": "v31" }] }]
+      },
+      "status": 400,
+      "code": "INVALID_INPUT",
+      "unchangedExport": "security.expected.json"
+    },
+    {
+      "id": "T08b",
+      "input": "primary.input.json",
+      "resume": "r-security",
+      "description": "accomplishment a3 belongs to e2, selected under e1",
+      "payload": {
+        "name": "Security",
+        "experiences": [{ "experienceId": "e1", "bullets": [{ "accomplishmentId": "a3", "variantId": "v31" }] }]
+      },
+      "status": 400,
+      "code": "INVALID_INPUT",
+      "unchangedExport": "security.expected.json"
+    },
+    {
+      "id": "T08c",
+      "input": "primary.input.json",
+      "resume": "r-security",
+      "description": "unknown nested variant ID",
+      "payload": {
+        "name": "Security",
+        "experiences": [{ "experienceId": "e1", "bullets": [{ "accomplishmentId": "a1", "variantId": "v-missing" }] }]
+      },
+      "status": 400,
+      "code": "INVALID_REFERENCE",
+      "unchangedExport": "security.expected.json"
+    },
+    {
+      "id": "T08d",
+      "input": "primary.input.json",
+      "resume": "r-security",
+      "description": "duplicate accomplishment within one resume",
+      "payload": {
+        "name": "Security",
+        "experiences": [
+          {
+            "experienceId": "e1",
+            "bullets": [
+              { "accomplishmentId": "a1", "variantId": "v11" },
+              { "accomplishmentId": "a1", "variantId": "v12" }
+            ]
+          }
+        ]
+      },
+      "status": 400,
+      "code": "INVALID_INPUT",
+      "unchangedExport": "security.expected.json"
+    },
+    {
+      "id": "T08e",
+      "input": "primary.input.json",
+      "resume": "r-security",
+      "description": "duplicate experience within one resume",
+      "payload": {
+        "name": "Security",
+        "experiences": [
+          { "experienceId": "e1", "bullets": [] },
+          { "experienceId": "e1", "bullets": [] }
+        ]
+      },
+      "status": 400,
+      "code": "INVALID_INPUT",
+      "unchangedExport": "security.expected.json"
+    },
+    {
+      "id": "T08f",
+      "input": "sections.input.json",
+      "resume": "r-platform",
+      "description": "project p1 placed in the experiences (work) section",
+      "payload": {
+        "name": "Platform",
+        "experiences": [{ "experienceId": "p1", "bullets": [] }],
+        "projects": [],
+        "skills": []
+      },
+      "status": 400,
+      "code": "INVALID_INPUT",
+      "unchangedExport": "sections.platform.expected.json"
+    },
+    {
+      "id": "T08g",
+      "input": "sections.input.json",
+      "resume": "r-platform",
+      "description": "work accomplishment aw1 selected under project p1",
+      "payload": {
+        "name": "Platform",
+        "experiences": [],
+        "projects": [{ "projectId": "p1", "bullets": [{ "accomplishmentId": "aw1", "variantId": "vw11" }] }],
+        "skills": []
+      },
+      "status": 400,
+      "code": "INVALID_INPUT",
+      "unchangedExport": "sections.platform.expected.json"
+    },
+    {
+      "id": "T08h",
+      "input": "sections.input.json",
+      "resume": "r-platform",
+      "description": "duplicate skill",
+      "payload": { "name": "Platform", "experiences": [], "projects": [], "skills": ["s1", "s1"] },
+      "status": 400,
+      "code": "INVALID_INPUT",
+      "unchangedExport": "sections.platform.expected.json"
+    },
+    {
+      "id": "T08i",
+      "input": "sections.input.json",
+      "resume": "r-platform",
+      "description": "unknown skill ID",
+      "payload": { "name": "Platform", "experiences": [], "projects": [], "skills": ["s-missing"] },
+      "status": 400,
+      "code": "INVALID_REFERENCE",
+      "unchangedExport": "sections.platform.expected.json"
+    }
+  ]
+}

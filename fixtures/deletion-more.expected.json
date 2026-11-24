@@ -1,0 +1,102 @@
+{
+  "convention": "Each attempt starts from a fresh load of its input unless it belongs to a sequence. After every attempt, every saved resume's export must still deep-equal the listed files (successful deletes here touch only unreferenced records). Rejected attempts must leave every library and selection row unchanged.",
+  "attempts": [
+    {
+      "case": "T07",
+      "input": "primary.input.json",
+      "type": "experience",
+      "id": "e1",
+      "status": 409,
+      "code": "RECORD_IN_USE",
+      "affectedResumes": [
+        { "id": "r-engineering", "name": "Engineering" },
+        { "id": "r-security", "name": "Security" }
+      ],
+      "unchangedExports": { "r-security": "security.expected.json", "r-engineering": "engineering.expected.json" }
+    },
+    {
+      "case": "T20a",
+      "input": "sections.input.json",
+      "type": "project",
+      "id": "p1",
+      "status": 409,
+      "code": "RECORD_IN_USE",
+      "affectedResumes": [
+        { "id": "r-data", "name": "Data" },
+        { "id": "r-platform", "name": "Platform" }
+      ],
+      "unchangedExports": { "r-platform": "sections.platform.expected.json", "r-data": "sections.data.expected.json" }
+    },
+    {
+      "case": "T20b",
+      "input": "sections.input.json",
+      "type": "accomplishment",
+      "id": "ap2",
+      "status": 409,
+      "code": "RECORD_IN_USE",
+      "affectedResumes": [{ "id": "r-platform", "name": "Platform" }],
+      "unchangedExports": { "r-platform": "sections.platform.expected.json", "r-data": "sections.data.expected.json" }
+    },
+    {
+      "case": "T20c",
+      "input": "sections.input.json",
+      "type": "variant",
+      "id": "vp12",
+      "status": 409,
+      "code": "RECORD_IN_USE",
+      "affectedResumes": [{ "id": "r-data", "name": "Data" }],
+      "unchangedExports": { "r-platform": "sections.platform.expected.json", "r-data": "sections.data.expected.json" }
+    },
+    {
+      "case": "T20d",
+      "input": "sections.input.json",
+      "type": "skill",
+      "id": "s2",
+      "status": 409,
+      "code": "RECORD_IN_USE",
+      "affectedResumes": [
+        { "id": "r-data", "name": "Data" },
+        { "id": "r-platform", "name": "Platform" }
+      ],
+      "unchangedExports": { "r-platform": "sections.platform.expected.json", "r-data": "sections.data.expected.json" }
+    },
+    {
+      "case": "T20e",
+      "input": "sections.input.json",
+      "type": "skill",
+      "id": "s3",
+      "status": 409,
+      "code": "RECORD_IN_USE",
+      "affectedResumes": [{ "id": "r-data", "name": "Data" }],
+      "unchangedExports": { "r-platform": "sections.platform.expected.json", "r-data": "sections.data.expected.json" }
+    },
+    {
+      "case": "T20f",
+      "input": "sections.input.json",
+      "type": "skill",
+      "id": "s4",
+      "status": 204,
+      "recordsAbsent": ["s4"],
+      "unchangedExports": { "r-platform": "sections.platform.expected.json", "r-data": "sections.data.expected.json" }
+    },
+    {
+      "case": "T20g",
+      "input": "sections.input.json",
+      "type": "project",
+      "id": "p3",
+      "status": 204,
+      "recordsAbsent": ["p3", "ap4", "vp41"],
+      "unchangedExports": { "r-platform": "sections.platform.expected.json", "r-data": "sections.data.expected.json" }
+    },
+    {
+      "case": "T20h",
+      "input": "sections.input.json",
+      "type": "variant",
+      "id": "vw22",
+      "status": 204,
+      "recordsAbsent": ["vw22"],
+      "recordsStillPresent": ["aw2", "vw21"],
+      "unchangedExports": { "r-platform": "sections.platform.expected.json", "r-data": "sections.data.expected.json" }
+    }
+  ]
+}

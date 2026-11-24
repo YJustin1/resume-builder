@@ -1,0 +1,154 @@
+{
+  "case": "T27",
+  "description": "First run without a profile (SPEC FR-01a). Starts from an empty database, not a fixture input.",
+  "steps": [
+    {
+      "action": "getProfile",
+      "status": 200,
+      "expectedBody": {
+        "profile": null
+      }
+    },
+    {
+      "action": "createExperience",
+      "id": "e1",
+      "body": {
+        "name": "Northwind Lab",
+        "position": "Research Intern"
+      },
+      "status": 201
+    },
+    {
+      "action": "createResume",
+      "id": "r-draft",
+      "name": "Draft",
+      "status": 201
+    },
+    {
+      "action": "saveResume",
+      "id": "r-draft",
+      "payload": {
+        "name": "Draft",
+        "experiences": [
+          {
+            "experienceId": "e1",
+            "bullets": []
+          }
+        ]
+      },
+      "status": 200
+    },
+    {
+      "action": "exportJson",
+      "id": "r-draft",
+      "status": 409,
+      "code": "PROFILE_REQUIRED"
+    },
+    {
+      "action": "impact",
+      "change": {
+        "op": "edit",
+        "type": "experience",
+        "id": "e1",
+        "patch": {
+          "name": "Northwind Research Lab"
+        }
+      },
+      "status": 200,
+      "expectedImpact": [],
+      "note": "r-draft selects e1 but is unexportable before and after the edit"
+    },
+    {
+      "action": "impact",
+      "change": {
+        "op": "edit",
+        "type": "profile",
+        "patch": {
+          "email": "sample@example.com"
+        }
+      },
+      "status": 400,
+      "code": "INVALID_INPUT",
+      "note": "creation proposal without name"
+    },
+    {
+      "action": "impact",
+      "change": {
+        "op": "edit",
+        "type": "profile",
+        "patch": {
+          "name": "Sample Candidate"
+        }
+      },
+      "status": 200,
+      "expectedImpact": [
+        {
+          "id": "r-draft",
+          "name": "Draft"
+        }
+      ]
+    },
+    {
+      "action": "patchProfile",
+      "patch": {
+        "name": "Sample Candidate"
+      },
+      "status": 409,
+      "code": "PROFILE_REQUIRED"
+    },
+    {
+      "action": "putProfile",
+      "body": {
+        "name": "Sample Candidate",
+        "education": []
+      },
+      "status": 201
+    },
+    {
+      "action": "impact",
+      "change": {
+        "op": "edit",
+        "type": "experience",
+        "id": "e1",
+        "patch": {
+          "name": "Northwind Research Lab"
+        }
+      },
+      "status": 200,
+      "expectedImpact": [
+        {
+          "id": "r-draft",
+          "name": "Draft"
+        }
+      ],
+      "note": "same proposal as step 6, now exportable"
+    },
+    {
+      "action": "exportJson",
+      "id": "r-draft",
+      "status": 200,
+      "expectedExport": {
+        "basics": {
+          "name": "Sample Candidate"
+        },
+        "work": [
+          {
+            "name": "Northwind Lab",
+            "position": "Research Intern",
+            "highlights": []
+          }
+        ]
+      }
+    },
+    {
+      "action": "putProfile",
+      "body": {
+        "name": "Sample Candidate",
+        "education": []
+      },
+      "status": 200,
+      "note": "replacement of an existing profile"
+    }
+  ],
+  "note": "createExperience/createResume with fixed IDs are a test-harness convenience; the API assigns UUIDs."
+}

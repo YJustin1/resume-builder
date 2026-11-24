@@ -1,0 +1,47 @@
+{
+  "basics": {
+    "name": "Sample Candidate",
+    "label": "Software Engineer",
+    "email": "sample@example.com"
+  },
+  "work": [
+    {
+      "name": "Ridge Analytics",
+      "position": "Data Intern",
+      "startDate": "2023-06",
+      "highlights": ["Built dashboards summarizing weekly data quality checks."]
+    },
+    {
+      "name": "Lakeside Systems",
+      "position": "Platform Intern",
+      "startDate": "2024-06",
+      "endDate": "2024-08",
+      "highlights": ["Reduced build times by standardizing container base images."]
+    }
+  ],
+  "education": [
+    {
+      "institution": "Sample University",
+      "area": "Computer Science",
+      "studyType": "BS",
+      "startDate": "2021-08",
+      "endDate": "2025-05"
+    }
+  ],
+  "projects": [
+    {
+      "name": "Signal Board",
+      "highlights": ["Streamed sensor readings to a live status page."]
+    },
+    {
+      "name": "Ledger Tool",
+      "url": "https://example.com/ledger",
+      "startDate": "2024-01",
+      "highlights": ["Designed a reconciliation report for household budgets."]
+    }
+  ],
+  "skills": [
+    { "name": "SQL", "level": "Intermediate" },
+    { "name": "Rust" }
+  ]
+}

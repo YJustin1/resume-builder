@@ -1,0 +1,757 @@
+{
+  "profile": {
+    "name": "Sample Candidate",
+    "email": "sample@example.com",
+    "education": [],
+    "skills": []
+  },
+  "experiences": [
+    {
+      "id": "oe1",
+      "name": "Overflow Lab",
+      "position": "Test Analyst"
+    }
+  ],
+  "accomplishments": [
+    {
+      "id": "oa01",
+      "experienceId": "oe1",
+      "fact": "Synthetic report review exercise 01.",
+      "tags": []
+    },
+    {
+      "id": "oa02",
+      "experienceId": "oe1",
+      "fact": "Synthetic report review exercise 02.",
+      "tags": []
+    },
+    {
+      "id": "oa03",
+      "experienceId": "oe1",
+      "fact": "Synthetic report review exercise 03.",
+      "tags": []
+    },
+    {
+      "id": "oa04",
+      "experienceId": "oe1",
+      "fact": "Synthetic report review exercise 04.",
+      "tags": []
+    },
+    {
+      "id": "oa05",
+      "experienceId": "oe1",
+      "fact": "Synthetic report review exercise 05.",
+      "tags": []
+    },
+    {
+      "id": "oa06",
+      "experienceId": "oe1",
+      "fact": "Synthetic report review exercise 06.",
+      "tags": []
+    },
+    {
+      "id": "oa07",
+      "experienceId": "oe1",
+      "fact": "Synthetic report review exercise 07.",
+      "tags": []
+    },
+    {
+      "id": "oa08",
+      "experienceId": "oe1",
+      "fact": "Synthetic report review exercise 08.",
+      "tags": []
+    },
+    {
+      "id": "oa09",
+      "experienceId": "oe1",
+      "fact": "Synthetic report review exercise 09.",
+      "tags": []
+    },
+    {
+      "id": "oa10",
+      "experienceId": "oe1",
+      "fact": "Synthetic report review exercise 10.",
+      "tags": []
+    },
+    {
+      "id": "oa11",
+      "experienceId": "oe1",
+      "fact": "Synthetic report review exercise 11.",
+      "tags": []
+    },
+    {
+      "id": "oa12",
+      "experienceId": "oe1",
+      "fact": "Synthetic report review exercise 12.",
+      "tags": []
+    },
+    {
+      "id": "oa13",
+      "experienceId": "oe1",
+      "fact": "Synthetic report review exercise 13.",
+      "tags": []
+    },
+    {
+      "id": "oa14",
+      "experienceId": "oe1",
+      "fact": "Synthetic report review exercise 14.",
+      "tags": []
+    },
+    {
+      "id": "oa15",
+      "experienceId": "oe1",
+      "fact": "Synthetic report review exercise 15.",
+      "tags": []
+    },
+    {
+      "id": "oa16",
+      "experienceId": "oe1",
+      "fact": "Synthetic report review exercise 16.",
+      "tags": []
+    },
+    {
+      "id": "oa17",
+      "experienceId": "oe1",
+      "fact": "Synthetic report review exercise 17.",
+      "tags": []
+    },
+    {
+      "id": "oa18",
+      "experienceId": "oe1",
+      "fact": "Synthetic report review exercise 18.",
+      "tags": []
+    },
+    {
+      "id": "oa19",
+      "experienceId": "oe1",
+      "fact": "Synthetic report review exercise 19.",
+      "tags": []
+    },
+    {
+      "id": "oa20",
+      "experienceId": "oe1",
+      "fact": "Synthetic report review exercise 20.",
+      "tags": []
+    },
+    {
+      "id": "oa21",
+      "experienceId": "oe1",
+      "fact": "Synthetic report review exercise 21.",
+      "tags": []
+    },
+    {
+      "id": "oa22",
+      "experienceId": "oe1",
+      "fact": "Synthetic report review exercise 22.",
+      "tags": []
+    },
+    {
+      "id": "oa23",
+      "experienceId": "oe1",
+      "fact": "Synthetic report review exercise 23.",
+      "tags": []
+    },
+    {
+      "id": "oa24",
+      "experienceId": "oe1",
+      "fact": "Synthetic report review exercise 24.",
+      "tags": []
+    },
+    {
+      "id": "oa25",
+      "experienceId": "oe1",
+      "fact": "Synthetic report review exercise 25.",
+      "tags": []
+    },
+    {
+      "id": "oa26",
+      "experienceId": "oe1",
+      "fact": "Synthetic report review exercise 26.",
+      "tags": []
+    },
+    {
+      "id": "oa27",
+      "experienceId": "oe1",
+      "fact": "Synthetic report review exercise 27.",
+      "tags": []
+    },
+    {
+      "id": "oa28",
+      "experienceId": "oe1",
+      "fact": "Synthetic report review exercise 28.",
+      "tags": []
+    },
+    {
+      "id": "oa29",
+      "experienceId": "oe1",
+      "fact": "Synthetic report review exercise 29.",
+      "tags": []
+    },
+    {
+      "id": "oa30",
+      "experienceId": "oe1",
+      "fact": "Synthetic report review exercise 30.",
+      "tags": []
+    },
+    {
+      "id": "oa31",
+      "experienceId": "oe1",
+      "fact": "Synthetic report review exercise 31.",
+      "tags": []
+    },
+    {
+      "id": "oa32",
+      "experienceId": "oe1",
+      "fact": "Synthetic report review exercise 32.",
+      "tags": []
+    },
+    {
+      "id": "oa33",
+      "experienceId": "oe1",
+      "fact": "Synthetic report review exercise 33.",
+      "tags": []
+    },
+    {
+      "id": "oa34",
+      "experienceId": "oe1",
+      "fact": "Synthetic report review exercise 34.",
+      "tags": []
+    },
+    {
+      "id": "oa35",
+      "experienceId": "oe1",
+      "fact": "Synthetic report review exercise 35.",
+      "tags": []
+    },
+    {
+      "id": "oa36",
+      "experienceId": "oe1",
+      "fact": "Synthetic report review exercise 36.",
+      "tags": []
+    },
+    {
+      "id": "oa37",
+      "experienceId": "oe1",
+      "fact": "Synthetic report review exercise 37.",
+      "tags": []
+    },
+    {
+      "id": "oa38",
+      "experienceId": "oe1",
+      "fact": "Synthetic report review exercise 38.",
+      "tags": []
+    },
+    {
+      "id": "oa39",
+      "experienceId": "oe1",
+      "fact": "Synthetic report review exercise 39.",
+      "tags": []
+    },
+    {
+      "id": "oa40",
+      "experienceId": "oe1",
+      "fact": "Synthetic report review exercise 40.",
+      "tags": []
+    },
+    {
+      "id": "oa41",
+      "experienceId": "oe1",
+      "fact": "Synthetic report review exercise 41.",
+      "tags": []
+    },
+    {
+      "id": "oa42",
+      "experienceId": "oe1",
+      "fact": "Synthetic report review exercise 42.",
+      "tags": []
+    },
+    {
+      "id": "oa43",
+      "experienceId": "oe1",
+      "fact": "Synthetic report review exercise 43.",
+      "tags": []
+    },
+    {
+      "id": "oa44",
+      "experienceId": "oe1",
+      "fact": "Synthetic report review exercise 44.",
+      "tags": []
+    },
+    {
+      "id": "oa45",
+      "experienceId": "oe1",
+      "fact": "Synthetic report review exercise 45.",
+      "tags": []
+    },
+    {
+      "id": "oa46",
+      "experienceId": "oe1",
+      "fact": "Synthetic report review exercise 46.",
+      "tags": []
+    },
+    {
+      "id": "oa47",
+      "experienceId": "oe1",
+      "fact": "Synthetic report review exercise 47.",
+      "tags": []
+    },
+    {
+      "id": "oa48",
+      "experienceId": "oe1",
+      "fact": "Synthetic report review exercise 48.",
+      "tags": []
+    }
+  ],
+  "variants": [
+    {
+      "id": "ov01",
+      "accomplishmentId": "oa01",
+      "text": "Case 01: Reviewed the synthetic report, documented the validation findings, and communicated the results to the review team for reproducible followup and independent verification."
+    },
+    {
+      "id": "ov02",
+      "accomplishmentId": "oa02",
+      "text": "Case 02: Reviewed the synthetic report, documented the validation findings, and communicated the results to the review team for reproducible followup and independent verification."
+    },
+    {
+      "id": "ov03",
+      "accomplishmentId": "oa03",
+      "text": "Case 03: Reviewed the synthetic report, documented the validation findings, and communicated the results to the review team for reproducible followup and independent verification."
+    },
+    {
+      "id": "ov04",
+      "accomplishmentId": "oa04",
+      "text": "Case 04: Reviewed the synthetic report, documented the validation findings, and communicated the results to the review team for reproducible followup and independent verification."
+    },
+    {
+      "id": "ov05",
+      "accomplishmentId": "oa05",
+      "text": "Case 05: Reviewed the synthetic report, documented the validation findings, and communicated the results to the review team for reproducible followup and independent verification."
+    },
+    {
+      "id": "ov06",
+      "accomplishmentId": "oa06",
+      "text": "Case 06: Reviewed the synthetic report, documented the validation findings, and communicated the results to the review team for reproducible followup and independent verification."
+    },
+    {
+      "id": "ov07",
+      "accomplishmentId": "oa07",
+      "text": "Case 07: Reviewed the synthetic report, documented the validation findings, and communicated the results to the review team for reproducible followup and independent verification."
+    },
+    {
+      "id": "ov08",
+      "accomplishmentId": "oa08",
+      "text": "Case 08: Reviewed the synthetic report, documented the validation findings, and communicated the results to the review team for reproducible followup and independent verification."
+    },
+    {
+      "id": "ov09",
+      "accomplishmentId": "oa09",
+      "text": "Case 09: Reviewed the synthetic report, documented the validation findings, and communicated the results to the review team for reproducible followup and independent verification."
+    },
+    {
+      "id": "ov10",
+      "accomplishmentId": "oa10",
+      "text": "Case 10: Reviewed the synthetic report, documented the validation findings, and communicated the results to the review team for reproducible followup and independent verification."
+    },
+    {
+      "id": "ov11",
+      "accomplishmentId": "oa11",
+      "text": "Case 11: Reviewed the synthetic report, documented the validation findings, and communicated the results to the review team for reproducible followup and independent verification."
+    },
+    {
+      "id": "ov12",
+      "accomplishmentId": "oa12",
+      "text": "Case 12: Reviewed the synthetic report, documented the validation findings, and communicated the results to the review team for reproducible followup and independent verification."
+    },
+    {
+      "id": "ov13",
+      "accomplishmentId": "oa13",
+      "text": "Case 13: Reviewed the synthetic report, documented the validation findings, and communicated the results to the review team for reproducible followup and independent verification."
+    },
+    {
+      "id": "ov14",
+      "accomplishmentId": "oa14",
+      "text": "Case 14: Reviewed the synthetic report, documented the validation findings, and communicated the results to the review team for reproducible followup and independent verification."
+    },
+    {
+      "id": "ov15",
+      "accomplishmentId": "oa15",
+      "text": "Case 15: Reviewed the synthetic report, documented the validation findings, and communicated the results to the review team for reproducible followup and independent verification."
+    },
+    {
+      "id": "ov16",
+      "accomplishmentId": "oa16",
+      "text": "Case 16: Reviewed the synthetic report, documented the validation findings, and communicated the results to the review team for reproducible followup and independent verification."
+    },
+    {
+      "id": "ov17",
+      "accomplishmentId": "oa17",
+      "text": "Case 17: Reviewed the synthetic report, documented the validation findings, and communicated the results to the review team for reproducible followup and independent verification."
+    },
+    {
+      "id": "ov18",
+      "accomplishmentId": "oa18",
+      "text": "Case 18: Reviewed the synthetic report, documented the validation findings, and communicated the results to the review team for reproducible followup and independent verification."
+    },
+    {
+      "id": "ov19",
+      "accomplishmentId": "oa19",
+      "text": "Case 19: Reviewed the synthetic report, documented the validation findings, and communicated the results to the review team for reproducible followup and independent verification."
+    },
+    {
+      "id": "ov20",
+      "accomplishmentId": "oa20",
+      "text": "Case 20: Reviewed the synthetic report, documented the validation findings, and communicated the results to the review team for reproducible followup and independent verification."
+    },
+    {
+      "id": "ov21",
+      "accomplishmentId": "oa21",
+      "text": "Case 21: Reviewed the synthetic report, documented the validation findings, and communicated the results to the review team for reproducible followup and independent verification."
+    },
+    {
+      "id": "ov22",
+      "accomplishmentId": "oa22",
+      "text": "Case 22: Reviewed the synthetic report, documented the validation findings, and communicated the results to the review team for reproducible followup and independent verification."
+    },
+    {
+      "id": "ov23",
+      "accomplishmentId": "oa23",
+      "text": "Case 23: Reviewed the synthetic report, documented the validation findings, and communicated the results to the review team for reproducible followup and independent verification."
+    },
+    {
+      "id": "ov24",
+      "accomplishmentId": "oa24",
+      "text": "Case 24: Reviewed the synthetic report, documented the validation findings, and communicated the results to the review team for reproducible followup and independent verification."
+    },
+    {
+      "id": "ov25",
+      "accomplishmentId": "oa25",
+      "text": "Case 25: Reviewed the synthetic report, documented the validation findings, and communicated the results to the review team for reproducible followup and independent verification."
+    },
+    {
+      "id": "ov26",
+      "accomplishmentId": "oa26",
+      "text": "Case 26: Reviewed the synthetic report, documented the validation findings, and communicated the results to the review team for reproducible followup and independent verification."
+    },
+    {
+      "id": "ov27",
+      "accomplishmentId": "oa27",
+      "text": "Case 27: Reviewed the synthetic report, documented the validation findings, and communicated the results to the review team for reproducible followup and independent verification."
+    },
+    {
+      "id": "ov28",
+      "accomplishmentId": "oa28",
+      "text": "Case 28: Reviewed the synthetic report, documented the validation findings, and communicated the results to the review team for reproducible followup and independent verification."
+    },
+    {
+      "id": "ov29",
+      "accomplishmentId": "oa29",
+      "text": "Case 29: Reviewed the synthetic report, documented the validation findings, and communicated the results to the review team for reproducible followup and independent verification."
+    },
+    {
+      "id": "ov30",
+      "accomplishmentId": "oa30",
+      "text": "Case 30: Reviewed the synthetic report, documented the validation findings, and communicated the results to the review team for reproducible followup and independent verification."
+    },
+    {
+      "id": "ov31",
+      "accomplishmentId": "oa31",
+      "text": "Case 31: Reviewed the synthetic report, documented the validation findings, and communicated the results to the review team for reproducible followup and independent verification."
+    },
+    {
+      "id": "ov32",
+      "accomplishmentId": "oa32",
+      "text": "Case 32: Reviewed the synthetic report, documented the validation findings, and communicated the results to the review team for reproducible followup and independent verification."
+    },
+    {
+      "id": "ov33",
+      "accomplishmentId": "oa33",
+      "text": "Case 33: Reviewed the synthetic report, documented the validation findings, and communicated the results to the review team for reproducible followup and independent verification."
+    },
+    {
+      "id": "ov34",
+      "accomplishmentId": "oa34",
+      "text": "Case 34: Reviewed the synthetic report, documented the validation findings, and communicated the results to the review team for reproducible followup and independent verification."
+    },
+    {
+      "id": "ov35",
+      "accomplishmentId": "oa35",
+      "text": "Case 35: Reviewed the synthetic report, documented the validation findings, and communicated the results to the review team for reproducible followup and independent verification."
+    },
+    {
+      "id": "ov36",
+      "accomplishmentId": "oa36",
+      "text": "Case 36: Reviewed the synthetic report, documented the validation findings, and communicated the results to the review team for reproducible followup and independent verification."
+    },
+    {
+      "id": "ov37",
+      "accomplishmentId": "oa37",
+      "text": "Case 37: Reviewed the synthetic report, documented the validation findings, and communicated the results to the review team for reproducible followup and independent verification."
+    },
+    {
+      "id": "ov38",
+      "accomplishmentId": "oa38",
+      "text": "Case 38: Reviewed the synthetic report, documented the validation findings, and communicated the results to the review team for reproducible followup and independent verification."
+    },
+    {
+      "id": "ov39",
+      "accomplishmentId": "oa39",
+      "text": "Case 39: Reviewed the synthetic report, documented the validation findings, and communicated the results to the review team for reproducible followup and independent verification."
+    },
+    {
+      "id": "ov40",
+      "accomplishmentId": "oa40",
+      "text": "Case 40: Reviewed the synthetic report, documented the validation findings, and communicated the results to the review team for reproducible followup and independent verification."
+    },
+    {
+      "id": "ov41",
+      "accomplishmentId": "oa41",
+      "text": "Case 41: Reviewed the synthetic report, documented the validation findings, and communicated the results to the review team for reproducible followup and independent verification."
+    },
+    {
+      "id": "ov42",
+      "accomplishmentId": "oa42",
+      "text": "Case 42: Reviewed the synthetic report, documented the validation findings, and communicated the results to the review team for reproducible followup and independent verification."
+    },
+    {
+      "id": "ov43",
+      "accomplishmentId": "oa43",
+      "text": "Case 43: Reviewed the synthetic report, documented the validation findings, and communicated the results to the review team for reproducible followup and independent verification."
+    },
+    {
+      "id": "ov44",
+      "accomplishmentId": "oa44",
+      "text": "Case 44: Reviewed the synthetic report, documented the validation findings, and communicated the results to the review team for reproducible followup and independent verification."
+    },
+    {
+      "id": "ov45",
+      "accomplishmentId": "oa45",
+      "text": "Case 45: Reviewed the synthetic report, documented the validation findings, and communicated the results to the review team for reproducible followup and independent verification."
+    },
+    {
+      "id": "ov46",
+      "accomplishmentId": "oa46",
+      "text": "Case 46: Reviewed the synthetic report, documented the validation findings, and communicated the results to the review team for reproducible followup and independent verification."
+    },
+    {
+      "id": "ov47",
+      "accomplishmentId": "oa47",
+      "text": "Case 47: Reviewed the synthetic report, documented the validation findings, and communicated the results to the review team for reproducible followup and independent verification."
+    },
+    {
+      "id": "ov48",
+      "accomplishmentId": "oa48",
+      "text": "Case 48: Reviewed the synthetic report, documented the validation findings, and communicated the results to the review team for reproducible followup and independent verification."
+    },
+    {
+      "id": "ov-unused",
+      "accomplishmentId": "oa01",
+      "text": "UNSELECTED OVERFLOW WORDING: This sentence must never appear."
+    }
+  ],
+  "resumes": [
+    {
+      "id": "r-overflow",
+      "name": "Overflow",
+      "experiences": [
+        {
+          "experienceId": "oe1",
+          "bullets": [
+            {
+              "accomplishmentId": "oa01",
+              "variantId": "ov01"
+            },
+            {
+              "accomplishmentId": "oa02",
+              "variantId": "ov02"
+            },
+            {
+              "accomplishmentId": "oa03",
+              "variantId": "ov03"
+            },
+            {
+              "accomplishmentId": "oa04",
+              "variantId": "ov04"
+            },
+            {
+              "accomplishmentId": "oa05",
+              "variantId": "ov05"
+            },
+            {
+              "accomplishmentId": "oa06",
+              "variantId": "ov06"
+            },
+            {
+              "accomplishmentId": "oa07",
+              "variantId": "ov07"
+            },
+            {
+              "accomplishmentId": "oa08",
+              "variantId": "ov08"
+            },
+            {
+              "accomplishmentId": "oa09",
+              "variantId": "ov09"
+            },
+            {
+              "accomplishmentId": "oa10",
+              "variantId": "ov10"
+            },
+            {
+              "accomplishmentId": "oa11",
+              "variantId": "ov11"
+            },
+            {
+              "accomplishmentId": "oa12",
+              "variantId": "ov12"
+            },
+            {
+              "accomplishmentId": "oa13",
+              "variantId": "ov13"
+            },
+            {
+              "accomplishmentId": "oa14",
+              "variantId": "ov14"
+            },
+            {
+              "accomplishmentId": "oa15",
+              "variantId": "ov15"
+            },
+            {
+              "accomplishmentId": "oa16",
+              "variantId": "ov16"
+            },
+            {
+              "accomplishmentId": "oa17",
+              "variantId": "ov17"
+            },
+            {
+              "accomplishmentId": "oa18",
+              "variantId": "ov18"
+            },
+            {
+              "accomplishmentId": "oa19",
+              "variantId": "ov19"
+            },
+            {
+              "accomplishmentId": "oa20",
+              "variantId": "ov20"
+            },
+            {
+              "accomplishmentId": "oa21",
+              "variantId": "ov21"
+            },
+            {
+              "accomplishmentId": "oa22",
+              "variantId": "ov22"
+            },
+            {
+              "accomplishmentId": "oa23",
+              "variantId": "ov23"
+            },
+            {
+              "accomplishmentId": "oa24",
+              "variantId": "ov24"
+            },
+            {
+              "accomplishmentId": "oa25",
+              "variantId": "ov25"
+            },
+            {
+              "accomplishmentId": "oa26",
+              "variantId": "ov26"
+            },
+            {
+              "accomplishmentId": "oa27",
+              "variantId": "ov27"
+            },
+            {
+              "accomplishmentId": "oa28",
+              "variantId": "ov28"
+            },
+            {
+              "accomplishmentId": "oa29",
+              "variantId": "ov29"
+            },
+            {
+              "accomplishmentId": "oa30",
+              "variantId": "ov30"
+            },
+            {
+              "accomplishmentId": "oa31",
+              "variantId": "ov31"
+            },
+            {
+              "accomplishmentId": "oa32",
+              "variantId": "ov32"
+            },
+            {
+              "accomplishmentId": "oa33",
+              "variantId": "ov33"
+            },
+            {
+              "accomplishmentId": "oa34",
+              "variantId": "ov34"
+            },
+            {
+              "accomplishmentId": "oa35",
+              "variantId": "ov35"
+            },
+            {
+              "accomplishmentId": "oa36",
+              "variantId": "ov36"
+            },
+            {
+              "accomplishmentId": "oa37",
+              "variantId": "ov37"
+            },
+            {
+              "accomplishmentId": "oa38",
+              "variantId": "ov38"
+            },
+            {
+              "accomplishmentId": "oa39",
+              "variantId": "ov39"
+            },
+            {
+              "accomplishmentId": "oa40",
+              "variantId": "ov40"
+            },
+            {
+              "accomplishmentId": "oa41",
+              "variantId": "ov41"
+            },
+            {
+              "accomplishmentId": "oa42",
+              "variantId": "ov42"
+            },
+            {
+              "accomplishmentId": "oa43",
+              "variantId": "ov43"
+            },
+            {
+              "accomplishmentId": "oa44",
+              "variantId": "ov44"
+            },
+            {
+              "accomplishmentId": "oa45",
+              "variantId": "ov45"
+            },
+            {
+              "accomplishmentId": "oa46",
+              "variantId": "ov46"
+            },
+            {
+              "accomplishmentId": "oa47",
+              "variantId": "ov47"
+            },
+            {
+              "accomplishmentId": "oa48",
+              "variantId": "ov48"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

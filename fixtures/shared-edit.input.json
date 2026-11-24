@@ -1,0 +1,62 @@
+{
+  "profile": {
+    "name": "Sample Candidate",
+    "email": "sample@example.com",
+    "education": []
+  },
+  "experiences": [
+    {
+      "id": "e1",
+      "name": "Northwind Lab",
+      "position": "Research Intern",
+      "location": "Sample City",
+      "startDate": "2025-05-01",
+      "endDate": "2025-08-01"
+    }
+  ],
+  "projects": [],
+  "skills": [],
+  "accomplishments": [
+    {
+      "id": "a1",
+      "experienceId": "e1",
+      "fact": "Analyzed service request telemetry and alert patterns.",
+      "tags": ["security", "telemetry"]
+    }
+  ],
+  "variants": [
+    {
+      "id": "v11",
+      "accomplishmentId": "a1",
+      "text": "Reviewed alert patterns to identify suspicious requests."
+    },
+    {
+      "id": "v12",
+      "accomplishmentId": "a1",
+      "text": "Built a request analysis workflow for service telemetry."
+    }
+  ],
+  "resumes": [
+    {
+      "id": "r-security",
+      "name": "Security",
+      "experiences": [
+        { "experienceId": "e1", "bullets": [{ "accomplishmentId": "a1", "variantId": "v11" }] }
+      ]
+    },
+    {
+      "id": "r-cloud",
+      "name": "Cloud",
+      "experiences": [
+        { "experienceId": "e1", "bullets": [{ "accomplishmentId": "a1", "variantId": "v11" }] }
+      ]
+    },
+    {
+      "id": "r-engineering",
+      "name": "Engineering",
+      "experiences": [
+        { "experienceId": "e1", "bullets": [{ "accomplishmentId": "a1", "variantId": "v12" }] }
+      ]
+    }
+  ]
+}

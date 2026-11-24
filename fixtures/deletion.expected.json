@@ -1,0 +1,38 @@
+{
+  "case": "T04",
+  "attempts": [
+    {
+      "type": "variant",
+      "id": "v11",
+      "status": 409,
+      "code": "RECORD_IN_USE",
+      "affectedResumes": [
+        {
+          "id": "r-security",
+          "name": "Security"
+        }
+      ]
+    },
+    {
+      "type": "accomplishment",
+      "id": "a1",
+      "status": 409,
+      "code": "RECORD_IN_USE",
+      "affectedResumes": [
+        {
+          "id": "r-engineering",
+          "name": "Engineering"
+        },
+        {
+          "id": "r-security",
+          "name": "Security"
+        }
+      ]
+    }
+  ],
+  "stateUnchanged": true,
+  "unchangedExports": [
+    "security.expected.json",
+    "engineering.expected.json"
+  ]
+}

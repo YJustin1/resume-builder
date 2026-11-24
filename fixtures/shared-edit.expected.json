@@ -1,0 +1,100 @@
+{
+  "case": "T21",
+  "input": "shared-edit.input.json",
+  "edit": {
+    "type": "variant",
+    "id": "v11",
+    "text": "Investigated suspicious requests using alert telemetry."
+  },
+  "expectedImpact": [
+    { "id": "r-cloud", "name": "Cloud" },
+    { "id": "r-security", "name": "Security" }
+  ],
+  "before": {
+    "r-security": {
+      "basics": { "name": "Sample Candidate", "email": "sample@example.com" },
+      "work": [
+        {
+          "name": "Northwind Lab",
+          "position": "Research Intern",
+          "location": "Sample City",
+          "startDate": "2025-05-01",
+          "endDate": "2025-08-01",
+          "highlights": ["Reviewed alert patterns to identify suspicious requests."]
+        }
+      ]
+    },
+    "r-cloud": {
+      "basics": { "name": "Sample Candidate", "email": "sample@example.com" },
+      "work": [
+        {
+          "name": "Northwind Lab",
+          "position": "Research Intern",
+          "location": "Sample City",
+          "startDate": "2025-05-01",
+          "endDate": "2025-08-01",
+          "highlights": ["Reviewed alert patterns to identify suspicious requests."]
+        }
+      ]
+    },
+    "r-engineering": {
+      "basics": { "name": "Sample Candidate", "email": "sample@example.com" },
+      "work": [
+        {
+          "name": "Northwind Lab",
+          "position": "Research Intern",
+          "location": "Sample City",
+          "startDate": "2025-05-01",
+          "endDate": "2025-08-01",
+          "highlights": ["Built a request analysis workflow for service telemetry."]
+        }
+      ]
+    }
+  },
+  "after": {
+    "r-security": {
+      "basics": { "name": "Sample Candidate", "email": "sample@example.com" },
+      "work": [
+        {
+          "name": "Northwind Lab",
+          "position": "Research Intern",
+          "location": "Sample City",
+          "startDate": "2025-05-01",
+          "endDate": "2025-08-01",
+          "highlights": ["Investigated suspicious requests using alert telemetry."]
+        }
+      ]
+    },
+    "r-cloud": {
+      "basics": { "name": "Sample Candidate", "email": "sample@example.com" },
+      "work": [
+        {
+          "name": "Northwind Lab",
+          "position": "Research Intern",
+          "location": "Sample City",
+          "startDate": "2025-05-01",
+          "endDate": "2025-08-01",
+          "highlights": ["Investigated suspicious requests using alert telemetry."]
+        }
+      ]
+    },
+    "r-engineering": {
+      "basics": { "name": "Sample Candidate", "email": "sample@example.com" },
+      "work": [
+        {
+          "name": "Northwind Lab",
+          "position": "Research Intern",
+          "location": "Sample City",
+          "startDate": "2025-05-01",
+          "endDate": "2025-08-01",
+          "highlights": ["Built a request analysis workflow for service telemetry."]
+        }
+      ]
+    }
+  },
+  "baselineComparison": {
+    "note": "Independent-document counts describe the upstream copy model observed at jsonresume.org 7d482856 (EVALUATION.md E12); they are not produced by this application.",
+    "editsToCorrectEveryAffectedResume": { "independentDocuments": 2, "referenceConfigurations": 1 },
+    "staleResumesAfterOneEdit": { "independentDocuments": 1, "referenceConfigurations": 0 }
+  }
+}

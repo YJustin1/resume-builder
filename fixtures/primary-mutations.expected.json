@@ -1,0 +1,895 @@
+{
+  "input": "primary.input.json",
+  "convention": "Each case starts from a fresh load of primary.input.json and applies its steps in order. A string value \"file:<name>\" means deep equality with that fixture file. Array order is significant; object key order is not.",
+  "cases": [
+    {
+      "case": "T02",
+      "steps": [
+        {
+          "action": "saveResume",
+          "id": "r-security",
+          "payload": {
+            "name": "Security",
+            "experiences": [
+              {
+                "experienceId": "e2",
+                "bullets": [
+                  {
+                    "accomplishmentId": "a3",
+                    "variantId": "v31"
+                  }
+                ]
+              },
+              {
+                "experienceId": "e1",
+                "bullets": [
+                  {
+                    "accomplishmentId": "a1",
+                    "variantId": "v12"
+                  },
+                  {
+                    "accomplishmentId": "a2",
+                    "variantId": "v21"
+                  }
+                ]
+              }
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "r-security": {
+          "basics": {
+            "name": "Sample Candidate",
+            "email": "sample@example.com"
+          },
+          "work": [
+            {
+              "name": "Harbor Studio",
+              "position": "Software Intern",
+              "startDate": "2024-05-01",
+              "endDate": "2024-08-01",
+              "highlights": [
+                "Added regression tests for data validation."
+              ]
+            },
+            {
+              "name": "Northwind Lab",
+              "position": "Research Intern",
+              "location": "Sample City",
+              "startDate": "2025-05-01",
+              "endDate": "2025-08-01",
+              "highlights": [
+                "Built a request analysis workflow for service telemetry.",
+                "Documented access review findings for the team."
+              ]
+            }
+          ]
+        },
+        "r-engineering": "file:engineering.expected.json"
+      },
+      "libraryUnchanged": true
+    },
+    {
+      "case": "T03",
+      "steps": [
+        {
+          "action": "saveResume",
+          "id": "r-security",
+          "payload": {
+            "name": "Security",
+            "experiences": [
+              {
+                "experienceId": "e1",
+                "bullets": [
+                  {
+                    "accomplishmentId": "a2",
+                    "variantId": "v21"
+                  }
+                ]
+              },
+              {
+                "experienceId": "e2",
+                "bullets": [
+                  {
+                    "accomplishmentId": "a3",
+                    "variantId": "v31"
+                  }
+                ]
+              }
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "r-security": {
+          "basics": {
+            "name": "Sample Candidate",
+            "email": "sample@example.com"
+          },
+          "work": [
+            {
+              "name": "Northwind Lab",
+              "position": "Research Intern",
+              "location": "Sample City",
+              "startDate": "2025-05-01",
+              "endDate": "2025-08-01",
+              "highlights": [
+                "Documented access review findings for the team."
+              ]
+            },
+            {
+              "name": "Harbor Studio",
+              "position": "Software Intern",
+              "startDate": "2024-05-01",
+              "endDate": "2024-08-01",
+              "highlights": [
+                "Added regression tests for data validation."
+              ]
+            }
+          ]
+        },
+        "r-engineering": "file:engineering.expected.json"
+      },
+      "recordsStillPresent": [
+        "a1",
+        "v11",
+        "v12"
+      ]
+    },
+    {
+      "case": "T05",
+      "steps": [
+        {
+          "action": "saveResume",
+          "id": "r-security",
+          "payload": {
+            "name": "Security",
+            "experiences": [
+              {
+                "experienceId": "e1",
+                "bullets": [
+                  {
+                    "accomplishmentId": "a2",
+                    "variantId": "v21"
+                  },
+                  {
+                    "accomplishmentId": "a1",
+                    "variantId": "v12"
+                  }
+                ]
+              },
+              {
+                "experienceId": "e2",
+                "bullets": [
+                  {
+                    "accomplishmentId": "a3",
+                    "variantId": "v31"
+                  }
+                ]
+              }
+            ]
+          },
+          "status": 200
+        },
+        {
+          "action": "delete",
+          "type": "variant",
+          "id": "v11",
+          "status": 204
+        },
+        {
+          "action": "delete",
+          "type": "variant",
+          "id": "v12",
+          "status": 409,
+          "code": "RECORD_IN_USE",
+          "affectedResumes": [
+            {
+              "id": "r-engineering",
+              "name": "Engineering"
+            },
+            {
+              "id": "r-security",
+              "name": "Security"
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "r-security": {
+          "basics": {
+            "name": "Sample Candidate",
+            "email": "sample@example.com"
+          },
+          "work": [
+            {
+              "name": "Northwind Lab",
+              "position": "Research Intern",
+              "location": "Sample City",
+              "startDate": "2025-05-01",
+              "endDate": "2025-08-01",
+              "highlights": [
+                "Documented access review findings for the team.",
+                "Built a request analysis workflow for service telemetry."
+              ]
+            },
+            {
+              "name": "Harbor Studio",
+              "position": "Software Intern",
+              "startDate": "2024-05-01",
+              "endDate": "2024-08-01",
+              "highlights": [
+                "Added regression tests for data validation."
+              ]
+            }
+          ]
+        },
+        "r-engineering": "file:engineering.expected.json"
+      },
+      "recordsStillPresent": [
+        "a1",
+        "v12"
+      ],
+      "recordsAbsent": [
+        "v11"
+      ]
+    },
+    {
+      "case": "T09a",
+      "steps": [
+        {
+          "action": "editVariant",
+          "id": "v11",
+          "text": "Investigated suspicious requests using alert telemetry.",
+          "status": 200,
+          "expectedImpact": [
+            {
+              "id": "r-security",
+              "name": "Security"
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "r-security": {
+          "basics": {
+            "name": "Sample Candidate",
+            "email": "sample@example.com"
+          },
+          "work": [
+            {
+              "name": "Northwind Lab",
+              "position": "Research Intern",
+              "location": "Sample City",
+              "startDate": "2025-05-01",
+              "endDate": "2025-08-01",
+              "highlights": [
+                "Documented access review findings for the team.",
+                "Investigated suspicious requests using alert telemetry."
+              ]
+            },
+            {
+              "name": "Harbor Studio",
+              "position": "Software Intern",
+              "startDate": "2024-05-01",
+              "endDate": "2024-08-01",
+              "highlights": [
+                "Added regression tests for data validation."
+              ]
+            }
+          ]
+        },
+        "r-engineering": "file:engineering.expected.json"
+      },
+      "factsUnchanged": true
+    },
+    {
+      "case": "T09b",
+      "steps": [
+        {
+          "action": "saveResume",
+          "id": "r-security",
+          "payload": {
+            "name": "Security",
+            "experiences": [
+              {
+                "experienceId": "e1",
+                "bullets": [
+                  {
+                    "accomplishmentId": "a2",
+                    "variantId": "v21"
+                  },
+                  {
+                    "accomplishmentId": "a1",
+                    "variantId": "v12"
+                  }
+                ]
+              },
+              {
+                "experienceId": "e2",
+                "bullets": [
+                  {
+                    "accomplishmentId": "a3",
+                    "variantId": "v31"
+                  }
+                ]
+              }
+            ]
+          },
+          "status": 200
+        },
+        {
+          "action": "editVariant",
+          "id": "v12",
+          "text": "Designed a request analysis workflow for service telemetry.",
+          "status": 200,
+          "expectedImpact": [
+            {
+              "id": "r-engineering",
+              "name": "Engineering"
+            },
+            {
+              "id": "r-security",
+              "name": "Security"
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "r-security": {
+          "basics": {
+            "name": "Sample Candidate",
+            "email": "sample@example.com"
+          },
+          "work": [
+            {
+              "name": "Northwind Lab",
+              "position": "Research Intern",
+              "location": "Sample City",
+              "startDate": "2025-05-01",
+              "endDate": "2025-08-01",
+              "highlights": [
+                "Documented access review findings for the team.",
+                "Designed a request analysis workflow for service telemetry."
+              ]
+            },
+            {
+              "name": "Harbor Studio",
+              "position": "Software Intern",
+              "startDate": "2024-05-01",
+              "endDate": "2024-08-01",
+              "highlights": [
+                "Added regression tests for data validation."
+              ]
+            }
+          ]
+        },
+        "r-engineering": {
+          "basics": {
+            "name": "Sample Candidate",
+            "email": "sample@example.com"
+          },
+          "work": [
+            {
+              "name": "Harbor Studio",
+              "position": "Software Intern",
+              "startDate": "2024-05-01",
+              "endDate": "2024-08-01",
+              "highlights": [
+                "Improved reliability with automated validation tests."
+              ]
+            },
+            {
+              "name": "Northwind Lab",
+              "position": "Research Intern",
+              "location": "Sample City",
+              "startDate": "2025-05-01",
+              "endDate": "2025-08-01",
+              "highlights": [
+                "Designed a request analysis workflow for service telemetry."
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "case": "T09c",
+      "description": "An edit that normalizes to the current value (surrounding whitespace is trimmed) affects no resume.",
+      "steps": [
+        {
+          "action": "impact",
+          "change": {
+            "op": "edit",
+            "type": "variant",
+            "id": "v11",
+            "patch": {
+              "text": "  Reviewed alert patterns to identify suspicious requests.  "
+            }
+          },
+          "expectedImpact": []
+        },
+        {
+          "action": "editVariant",
+          "id": "v11",
+          "text": "  Reviewed alert patterns to identify suspicious requests.  ",
+          "status": 200,
+          "expectedImpact": []
+        }
+      ],
+      "expected": {
+        "r-security": "file:security.expected.json",
+        "r-engineering": "file:engineering.expected.json"
+      }
+    },
+    {
+      "case": "T13",
+      "steps": [
+        {
+          "action": "createResume",
+          "id": "r-empty",
+          "name": "Empty",
+          "status": 201
+        },
+        {
+          "action": "saveResume",
+          "id": "r-empty",
+          "payload": {
+            "name": "Empty",
+            "experiences": []
+          },
+          "status": 200,
+          "expectedExport": {
+            "basics": {
+              "name": "Sample Candidate",
+              "email": "sample@example.com"
+            },
+            "work": []
+          }
+        },
+        {
+          "action": "saveResume",
+          "id": "r-empty",
+          "payload": {
+            "name": "Empty",
+            "experiences": [
+              {
+                "experienceId": "e1",
+                "bullets": []
+              }
+            ]
+          },
+          "status": 200,
+          "expectedExport": {
+            "basics": {
+              "name": "Sample Candidate",
+              "email": "sample@example.com"
+            },
+            "work": [
+              {
+                "name": "Northwind Lab",
+                "position": "Research Intern",
+                "location": "Sample City",
+                "startDate": "2025-05-01",
+                "endDate": "2025-08-01",
+                "highlights": []
+              }
+            ]
+          }
+        },
+        {
+          "action": "delete",
+          "type": "experience",
+          "id": "e1",
+          "status": 409,
+          "code": "RECORD_IN_USE",
+          "affectedResumes": [
+            {
+              "id": "r-empty",
+              "name": "Empty"
+            },
+            {
+              "id": "r-engineering",
+              "name": "Engineering"
+            },
+            {
+              "id": "r-security",
+              "name": "Security"
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "r-security": "file:security.expected.json",
+        "r-engineering": "file:engineering.expected.json"
+      },
+      "note": "createResume with a fixed ID is a test-harness convenience; the API itself assigns UUIDs."
+    },
+    {
+      "case": "T17a",
+      "steps": [
+        {
+          "action": "editExperience",
+          "id": "e1",
+          "patch": {
+            "name": "Northwind Research Lab"
+          },
+          "status": 200,
+          "expectedImpact": [
+            {
+              "id": "r-engineering",
+              "name": "Engineering"
+            },
+            {
+              "id": "r-security",
+              "name": "Security"
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "r-security": {
+          "basics": {
+            "name": "Sample Candidate",
+            "email": "sample@example.com"
+          },
+          "work": [
+            {
+              "name": "Northwind Research Lab",
+              "position": "Research Intern",
+              "location": "Sample City",
+              "startDate": "2025-05-01",
+              "endDate": "2025-08-01",
+              "highlights": [
+                "Documented access review findings for the team.",
+                "Reviewed alert patterns to identify suspicious requests."
+              ]
+            },
+            {
+              "name": "Harbor Studio",
+              "position": "Software Intern",
+              "startDate": "2024-05-01",
+              "endDate": "2024-08-01",
+              "highlights": [
+                "Added regression tests for data validation."
+              ]
+            }
+          ]
+        },
+        "r-engineering": {
+          "basics": {
+            "name": "Sample Candidate",
+            "email": "sample@example.com"
+          },
+          "work": [
+            {
+              "name": "Harbor Studio",
+              "position": "Software Intern",
+              "startDate": "2024-05-01",
+              "endDate": "2024-08-01",
+              "highlights": [
+                "Improved reliability with automated validation tests."
+              ]
+            },
+            {
+              "name": "Northwind Research Lab",
+              "position": "Research Intern",
+              "location": "Sample City",
+              "startDate": "2025-05-01",
+              "endDate": "2025-08-01",
+              "highlights": [
+                "Built a request analysis workflow for service telemetry."
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "case": "T17b",
+      "steps": [
+        {
+          "action": "editAccomplishment",
+          "id": "a1",
+          "patch": {
+            "fact": "Studied request telemetry for unusual alert patterns.",
+            "tags": [
+              "detection"
+            ]
+          },
+          "status": 200,
+          "expectedImpact": []
+        }
+      ],
+      "expected": {
+        "r-security": "file:security.expected.json",
+        "r-engineering": "file:engineering.expected.json"
+      }
+    },
+    {
+      "case": "T17c",
+      "steps": [
+        {
+          "action": "editProfile",
+          "patch": {
+            "name": "Sample Candidate Revised"
+          },
+          "status": 200,
+          "expectedImpact": [
+            {
+              "id": "r-engineering",
+              "name": "Engineering"
+            },
+            {
+              "id": "r-security",
+              "name": "Security"
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "r-security": {
+          "basics": {
+            "name": "Sample Candidate Revised",
+            "email": "sample@example.com"
+          },
+          "work": [
+            {
+              "name": "Northwind Lab",
+              "position": "Research Intern",
+              "location": "Sample City",
+              "startDate": "2025-05-01",
+              "endDate": "2025-08-01",
+              "highlights": [
+                "Documented access review findings for the team.",
+                "Reviewed alert patterns to identify suspicious requests."
+              ]
+            },
+            {
+              "name": "Harbor Studio",
+              "position": "Software Intern",
+              "startDate": "2024-05-01",
+              "endDate": "2024-08-01",
+              "highlights": [
+                "Added regression tests for data validation."
+              ]
+            }
+          ]
+        },
+        "r-engineering": {
+          "basics": {
+            "name": "Sample Candidate Revised",
+            "email": "sample@example.com"
+          },
+          "work": [
+            {
+              "name": "Harbor Studio",
+              "position": "Software Intern",
+              "startDate": "2024-05-01",
+              "endDate": "2024-08-01",
+              "highlights": [
+                "Improved reliability with automated validation tests."
+              ]
+            },
+            {
+              "name": "Northwind Lab",
+              "position": "Research Intern",
+              "location": "Sample City",
+              "startDate": "2025-05-01",
+              "endDate": "2025-08-01",
+              "highlights": [
+                "Built a request analysis workflow for service telemetry."
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "case": "T24",
+      "description": "Dates outside the pinned schema pattern, impossible calendar dates, and end-before-start are rejected on write; the record is unchanged.",
+      "steps": [
+        {
+          "action": "editExperience",
+          "id": "e1",
+          "patch": {
+            "startDate": "0999-12-31"
+          },
+          "status": 400,
+          "code": "INVALID_INPUT"
+        },
+        {
+          "action": "editExperience",
+          "id": "e1",
+          "patch": {
+            "startDate": "2025-02-30"
+          },
+          "status": 400,
+          "code": "INVALID_INPUT"
+        },
+        {
+          "action": "editExperience",
+          "id": "e1",
+          "patch": {
+            "endDate": "2025-04"
+          },
+          "status": 400,
+          "code": "INVALID_INPUT",
+          "expectedAfterThisStep": {
+            "r-security": "file:security.expected.json",
+            "r-engineering": "file:engineering.expected.json"
+          }
+        },
+        {
+          "action": "editExperience",
+          "id": "e1",
+          "patch": {
+            "startDate": "2025"
+          },
+          "status": 200,
+          "expectedExportFields": [
+            {
+              "resume": "r-security",
+              "path": "work[0].startDate",
+              "value": "2025"
+            },
+            {
+              "resume": "r-engineering",
+              "path": "work[1].startDate",
+              "value": "2025"
+            }
+          ]
+        }
+      ],
+      "note": "Steps 1-3 are rejected and must leave both exports equal to the original files. Step 4 is valid at common precision (2025 vs 2025-08-01) and changes only the exported startDate of Northwind Lab."
+    },
+    {
+      "case": "T25",
+      "description": "Schema-constrained fields are validated on write with the pinned validator; empty strings are rejected; null clears an optional field.",
+      "steps": [
+        {
+          "action": "editProfile",
+          "patch": {
+            "email": "not-an-email"
+          },
+          "status": 400,
+          "code": "INVALID_INPUT",
+          "expectedAfterThisStep": {
+            "r-security": "file:security.expected.json",
+            "r-engineering": "file:engineering.expected.json"
+          }
+        },
+        {
+          "action": "editProfile",
+          "patch": {
+            "email": "   "
+          },
+          "status": 400,
+          "code": "INVALID_INPUT",
+          "expectedAfterThisStep": {
+            "r-security": "file:security.expected.json",
+            "r-engineering": "file:engineering.expected.json"
+          }
+        },
+        {
+          "action": "editExperience",
+          "id": "e1",
+          "patch": {
+            "url": "example.com"
+          },
+          "status": 400,
+          "code": "INVALID_INPUT",
+          "expectedAfterThisStep": {
+            "r-security": "file:security.expected.json",
+            "r-engineering": "file:engineering.expected.json"
+          }
+        },
+        {
+          "action": "impact",
+          "change": {
+            "op": "edit",
+            "type": "profile",
+            "patch": {
+              "email": "not-an-email"
+            }
+          },
+          "status": 400,
+          "code": "INVALID_INPUT"
+        },
+        {
+          "action": "impact",
+          "change": {
+            "op": "edit",
+            "type": "profile",
+            "patch": {
+              "email": "candidate@example.org"
+            }
+          },
+          "status": 200,
+          "expectedImpact": [
+            {
+              "id": "r-engineering",
+              "name": "Engineering"
+            },
+            {
+              "id": "r-security",
+              "name": "Security"
+            }
+          ]
+        },
+        {
+          "action": "editProfile",
+          "patch": {
+            "email": "candidate@example.org"
+          },
+          "status": 200,
+          "expectedImpact": [
+            {
+              "id": "r-engineering",
+              "name": "Engineering"
+            },
+            {
+              "id": "r-security",
+              "name": "Security"
+            }
+          ],
+          "expectedExportFields": [
+            {
+              "resume": "r-security",
+              "path": "basics",
+              "value": {
+                "name": "Sample Candidate",
+                "email": "candidate@example.org"
+              }
+            },
+            {
+              "resume": "r-engineering",
+              "path": "basics",
+              "value": {
+                "name": "Sample Candidate",
+                "email": "candidate@example.org"
+              }
+            }
+          ]
+        },
+        {
+          "action": "editProfile",
+          "patch": {
+            "email": null
+          },
+          "status": 200,
+          "expectedImpact": [
+            {
+              "id": "r-engineering",
+              "name": "Engineering"
+            },
+            {
+              "id": "r-security",
+              "name": "Security"
+            }
+          ],
+          "expectedExportFields": [
+            {
+              "resume": "r-security",
+              "path": "basics",
+              "value": {
+                "name": "Sample Candidate"
+              }
+            },
+            {
+              "resume": "r-engineering",
+              "path": "basics",
+              "value": {
+                "name": "Sample Candidate"
+              }
+            }
+          ]
+        }
+      ],
+      "note": "Profile edits use PATCH /api/profile (partial body), so a missing field can never be the reason for a 400. The valid-email control uses the same body shape as the rejected email steps. Impact steps belong to the Phase 2 gate."
+    }
+  ]
+}

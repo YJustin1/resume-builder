@@ -1,0 +1,38 @@
+{
+  "case": "T23",
+  "resume": "r-platform",
+  "input": "sections.input.json",
+  "theme": "jsonresume-theme-even@0.27.0 (orderedSequence encodes this theme's fixed section order: Work, Education, Projects, Skills)",
+  "pageCount": 1,
+  "overflowWarning": false,
+  "orderedSequence": [
+    "Lakeside Systems",
+    "Wrote runbooks for the internal deployment platform.",
+    "Migrated build pipelines to a shared container base image.",
+    "Sample University",
+    "Ledger Tool",
+    "Implemented double-entry validation for household budgets.",
+    "Added CSV import with schema checks.",
+    "TypeScript",
+    "SQL"
+  ],
+  "absentText": [
+    "Reduced build times by standardizing container base images.",
+    "Automated platform runbook checks in continuous integration.",
+    "Built dashboards summarizing weekly data quality checks.",
+    "Designed a reconciliation report for household budgets.",
+    "Streamed sensor readings to a live status page.",
+    "Prototyped an abandoned synthetic feature.",
+    "Ridge Analytics",
+    "Signal Board",
+    "Unused Project",
+    "Rust",
+    "Fortran"
+  ],
+  "absentInternalText": [
+    "Moved team builds onto one common container image.",
+    "Created operating documents for the deployment platform.",
+    "Validated balanced entries in a budgeting application.",
+    "Supported spreadsheet import with structural validation."
+  ]
+}

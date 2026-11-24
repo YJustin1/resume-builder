@@ -1,0 +1,28 @@
+{
+  "basics": {
+    "name": "Sample Candidate",
+    "email": "sample@example.com"
+  },
+  "work": [
+    {
+      "name": "Northwind Lab",
+      "position": "Research Intern",
+      "location": "Sample City",
+      "startDate": "2025-05-01",
+      "endDate": "2025-08-01",
+      "highlights": [
+        "Documented access review findings for the team.",
+        "Reviewed alert patterns to identify suspicious requests."
+      ]
+    },
+    {
+      "name": "Harbor Studio",
+      "position": "Software Intern",
+      "startDate": "2024-05-01",
+      "endDate": "2024-08-01",
+      "highlights": [
+        "Added regression tests for data validation."
+      ]
+    }
+  ]
+}

@@ -1,0 +1,147 @@
+{
+  "profile": {
+    "name": "Sample Candidate",
+    "label": "Software Engineer",
+    "email": "sample@example.com",
+    "education": [
+      {
+        "institution": "Sample University",
+        "area": "Computer Science",
+        "studyType": "BS",
+        "startDate": "2021-08",
+        "endDate": "2025-05"
+      }
+    ]
+  },
+  "experiences": [
+    {
+      "id": "w1",
+      "name": "Lakeside Systems",
+      "position": "Platform Intern",
+      "startDate": "2024-06",
+      "endDate": "2024-08"
+    },
+    {
+      "id": "w2",
+      "name": "Ridge Analytics",
+      "position": "Data Intern",
+      "startDate": "2023-06"
+    }
+  ],
+  "projects": [
+    {
+      "id": "p1",
+      "name": "Ledger Tool",
+      "url": "https://example.com/ledger",
+      "startDate": "2024-01"
+    },
+    {
+      "id": "p2",
+      "name": "Signal Board"
+    },
+    {
+      "id": "p3",
+      "name": "Unused Project"
+    }
+  ],
+  "skills": [
+    { "id": "s1", "name": "TypeScript", "keywords": ["Node.js", "React"] },
+    { "id": "s2", "name": "SQL", "level": "Intermediate" },
+    { "id": "s3", "name": "Rust" },
+    { "id": "s4", "name": "Fortran" }
+  ],
+  "accomplishments": [
+    {
+      "id": "aw1",
+      "experienceId": "w1",
+      "fact": "Moved team builds onto one common container image.",
+      "tags": ["infrastructure"]
+    },
+    {
+      "id": "aw2",
+      "experienceId": "w1",
+      "fact": "Created operating documents for the deployment platform.",
+      "tags": ["documentation"]
+    },
+    {
+      "id": "aw3",
+      "experienceId": "w2",
+      "fact": "Reported weekly results of data quality checks.",
+      "tags": ["data"]
+    },
+    {
+      "id": "ap1",
+      "projectId": "p1",
+      "fact": "Validated balanced entries in a budgeting application.",
+      "tags": ["finance"]
+    },
+    {
+      "id": "ap2",
+      "projectId": "p1",
+      "fact": "Supported spreadsheet import with structural validation.",
+      "tags": ["import"]
+    },
+    {
+      "id": "ap3",
+      "projectId": "p2",
+      "fact": "Displayed incoming sensor values on a web page.",
+      "tags": ["realtime"]
+    },
+    {
+      "id": "ap4",
+      "projectId": "p3",
+      "fact": "Explored a feature that was never shipped.",
+      "tags": []
+    }
+  ],
+  "variants": [
+    { "id": "vw11", "accomplishmentId": "aw1", "text": "Migrated build pipelines to a shared container base image." },
+    { "id": "vw12", "accomplishmentId": "aw1", "text": "Reduced build times by standardizing container base images." },
+    { "id": "vw21", "accomplishmentId": "aw2", "text": "Wrote runbooks for the internal deployment platform." },
+    { "id": "vw22", "accomplishmentId": "aw2", "text": "Automated platform runbook checks in continuous integration." },
+    { "id": "vw31", "accomplishmentId": "aw3", "text": "Built dashboards summarizing weekly data quality checks." },
+    { "id": "vp11", "accomplishmentId": "ap1", "text": "Implemented double-entry validation for household budgets." },
+    { "id": "vp12", "accomplishmentId": "ap1", "text": "Designed a reconciliation report for household budgets." },
+    { "id": "vp21", "accomplishmentId": "ap2", "text": "Added CSV import with schema checks." },
+    { "id": "vp31", "accomplishmentId": "ap3", "text": "Streamed sensor readings to a live status page." },
+    { "id": "vp41", "accomplishmentId": "ap4", "text": "Prototyped an abandoned synthetic feature." }
+  ],
+  "resumes": [
+    {
+      "id": "r-platform",
+      "name": "Platform",
+      "experiences": [
+        {
+          "experienceId": "w1",
+          "bullets": [
+            { "accomplishmentId": "aw2", "variantId": "vw21" },
+            { "accomplishmentId": "aw1", "variantId": "vw11" }
+          ]
+        }
+      ],
+      "projects": [
+        {
+          "projectId": "p1",
+          "bullets": [
+            { "accomplishmentId": "ap1", "variantId": "vp11" },
+            { "accomplishmentId": "ap2", "variantId": "vp21" }
+          ]
+        }
+      ],
+      "skills": ["s1", "s2"]
+    },
+    {
+      "id": "r-data",
+      "name": "Data",
+      "experiences": [
+        { "experienceId": "w2", "bullets": [{ "accomplishmentId": "aw3", "variantId": "vw31" }] },
+        { "experienceId": "w1", "bullets": [{ "accomplishmentId": "aw1", "variantId": "vw12" }] }
+      ],
+      "projects": [
+        { "projectId": "p2", "bullets": [{ "accomplishmentId": "ap3", "variantId": "vp31" }] },
+        { "projectId": "p1", "bullets": [{ "accomplishmentId": "ap1", "variantId": "vp12" }] }
+      ],
+      "skills": ["s2", "s3"]
+    }
+  ]
+}
