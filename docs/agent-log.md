@@ -113,3 +113,22 @@ The last row was a test gap. The response was `tests/phase1/impact.test.ts`, whi
 | demo-file symlink check removed | 0 |
 
 The last row is an equivalent mutant, not a gap: `lstat` never reports `isFile()` for a symlink, so the remaining check still refuses it.
+
+## Phase 2 review — Codex code review (2026-11-24)
+
+**Review:** `codex-review` (phase `code`, base `f341455`), 3 rounds (cap reached). The round-3 fixes await reviewer verification (see the owner report).
+
+| Round | Findings | Highlights |
+|---|---|---|
+| 1 | 7 blockers, 2 improvements | Any web page could write to the local API (no Origin/Host/content-type checks); a case-alias or hard link to the demo DB; the assembler accepted duplicates and blank names; demo reset was non-atomic; the §9 tests bypassed the real commands; HTTP T06 and T20 record checks were missing; root paths with spaces failed |
+| 2 | 3 blockers, 3 improvements | Reset raced a live demo server; two first seeds could both publish; orphaned selection rows were silently dropped; required export fields were unchecked; dangling demo symlinks blocked personal mode; the dev-proxy rule was unspecified |
+| 3 | 2 blockers, 1 improvement | Deleting sidecars could destroy recovery data; the PID-file lock could be reclaimed under a live holder; large rowids threw |
+
+**Response:**
+
+- every fix has a regression test, and every test was checked by reverting the fix in a scratch copy;
+- three reverts were equivalent behaviour (documented; the redundant lowercase check was removed);
+- the lock was redesigned around OS file locks;
+- a flaky concurrency test exposed a real SQLite lock-upgrade collision (docs/debugging.md #2).
+
+**Check:** `npm run check` gives 175 passed, 19 todo (rendering, Phase 3).
