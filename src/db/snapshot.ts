@@ -84,28 +84,35 @@ export function readSnapshot(db: Db): Snapshot {
   return { profile: readProfile(db), entries, accomplishments, variants, skills, resumes, orderingProblems: readOrderingProblems(db) };
 }
 
-/** Every ordered group whose stored positions are not exactly 0..n-1. */
+/**
+ * Every ordered group whose stored positions are not exactly the integers
+ * 0..n-1. Positions are read as their SQLite type and decimal text, so a
+ * non-integer value is reported (not coerced) and an integer too large for a
+ * JavaScript number cannot make the read throw (which would block repair).
+ */
 export function readOrderingProblems(db: Db): Map<string, string[]> {
   const groups = db
     .prepare(
-      `SELECT resume_id, 'entries:' || kind AS grp, sort_index FROM resume_entries
-       UNION ALL SELECT resume_id, 'bullets:' || entry_id, sort_index FROM resume_bullets
-       UNION ALL SELECT resume_id, 'skills', sort_index FROM resume_skills
-       ORDER BY 1, 2, 3`,
+      `SELECT resume_id, grp, typeof(sort_index) AS t, CAST(sort_index AS TEXT) AS v FROM (
+         SELECT resume_id, 'entries:' || kind AS grp, sort_index FROM resume_entries
+         UNION ALL SELECT resume_id, 'bullets:' || entry_id, sort_index FROM resume_bullets
+         UNION ALL SELECT resume_id, 'skills', sort_index FROM resume_skills)
+       ORDER BY resume_id, grp, sort_index`,
     )
-    .all() as { resume_id: string; grp: string; sort_index: number }[];
-  const byGroup = new Map<string, { resumeId: string; grp: string; idx: number[] }>();
+    .all() as { resume_id: string; grp: string; t: string; v: string }[];
+  const byGroup = new Map<string, { resumeId: string; grp: string; values: string[]; typed: boolean }>();
   for (const g of groups) {
     const key = `${g.resume_id}\u0000${g.grp}`;
-    const entry = byGroup.get(key) ?? { resumeId: g.resume_id, grp: g.grp, idx: [] };
-    entry.idx.push(Number(g.sort_index));
+    const entry = byGroup.get(key) ?? { resumeId: g.resume_id, grp: g.grp, values: [], typed: true };
+    entry.values.push(g.t === 'integer' ? g.v : `${g.t} ${JSON.stringify(g.v)}`);
+    entry.typed &&= g.t === 'integer';
     byGroup.set(key, entry);
   }
   const problems = new Map<string, string[]>();
-  for (const { resumeId, grp, idx } of byGroup.values()) {
-    if (idx.every((v, i) => v === i)) continue;
+  for (const { resumeId, grp, values, typed } of byGroup.values()) {
+    if (typed && values.every((v, i) => v === String(i))) continue;
     const list = problems.get(resumeId) ?? [];
-    list.push(`${grp} positions are [${idx.join(', ')}], expected 0..${idx.length - 1}`);
+    list.push(`${grp} positions are [${values.join(', ')}], expected 0..${values.length - 1}`);
     problems.set(resumeId, list);
   }
   return problems;

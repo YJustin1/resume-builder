@@ -540,7 +540,10 @@ Unit and integration tests remain the correctness oracle.
   3. correct renderer input, with a test-only adapter that inserts a novel `<p>Injected paragraph outside any list.</p>` into the HTML before printing, caught by the approved full-text check;
   4. one expected bullet dropped;
   5. two bullets swapped;
-  6. a visible symbol substituted by a look-alike that Unicode normalization would fold, at either layer: expected `µ` (U+00B5) printed as `μ` (U+03BC), and `²` printed as `2`. The full-text check must fail, which shows that neither pdf.js nor our code normalizes beyond the ligatures.
+  6. **Symbol fidelity, run as independent cases:**
+     - **(a) Positive control:** a PDF containing literal `µ` (U+00B5) and `²` must extract exactly as `µ` and `²`. This fails if pdf.js normalization is re-enabled, which would turn `µ` into `μ`.
+     - **(b) Substitution with expected `μ` (U+03BC) and a PDF containing `µ`:** the full-text check must fail. With pdf.js normalization on, `µ` would be extracted as `μ` and this case would wrongly pass, so it detects the regression.
+     - **(c) Substitution with expected `²` and a PDF containing `2`:** must fail, which detects normalization in our own code.
 - **Multi-column regions** (Even's skills grid) are checked by skill names only.
 - **Hard failures:** fail if extraction is unavailable, the document is empty, or the page count is invalid. Report missing, duplicated, unexpected or out-of-order text with the case ID.
 - **Overflow fixture:** assemble and export through the real pipeline. Require ≥ 2 pages, never an exact count beyond that. Check every full bullet, not just the markers.

@@ -185,3 +185,23 @@ describe('round 2 #12 stored ordering gaps are visible in the snapshot', () => {
     expect(lib.snapshot().orderingProblems).toEqual(new Map());
   });
 });
+
+describe('round 3 #12 stored positions must be real integers, read without loss', () => {
+  it('a text position is rejected by the schema', () => {
+    const lib = freshLibrary('primary.input.json');
+    expect(() =>
+      lib.db.exec("UPDATE resume_bullets SET sort_index = '0x1' WHERE resume_id = 'r-security' AND accomplishment_id = 'a1'"),
+    ).toThrow(/constraint failed/);
+  });
+  it('an oversized integer is reported, not thrown, and a save repairs it', () => {
+    const lib = freshLibrary('primary.input.json');
+    lib.db.exec(
+      "UPDATE resume_bullets SET sort_index = 9223372036854775807 WHERE resume_id = 'r-security' AND accomplishment_id = 'a1'",
+    );
+    const problems = lib.snapshot().orderingProblems;
+    expect(problems.get('r-security')).toEqual(['bullets:e1 positions are [0, 9223372036854775807], expected 0..1']);
+    const { id: _id, ...config } = lib.getResume('r-security');
+    lib.saveResume('r-security', config);
+    expect(lib.snapshot().orderingProblems).toEqual(new Map());
+  });
+});

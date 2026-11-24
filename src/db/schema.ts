@@ -60,7 +60,7 @@ CREATE TABLE resume_entries (
   resume_id TEXT NOT NULL REFERENCES resumes (id) ON DELETE CASCADE,
   entry_id TEXT NOT NULL,
   kind TEXT NOT NULL,
-  sort_index INTEGER NOT NULL CHECK (sort_index >= 0),
+  sort_index INTEGER NOT NULL CHECK (typeof(sort_index) = 'integer' AND sort_index >= 0),
   PRIMARY KEY (resume_id, entry_id),
   UNIQUE (resume_id, kind, sort_index),
   FOREIGN KEY (entry_id, kind) REFERENCES entries (id, kind) ON DELETE RESTRICT
@@ -71,7 +71,7 @@ CREATE TABLE resume_bullets (
   entry_id TEXT NOT NULL,
   accomplishment_id TEXT NOT NULL,
   variant_id TEXT NOT NULL,
-  sort_index INTEGER NOT NULL CHECK (sort_index >= 0),
+  sort_index INTEGER NOT NULL CHECK (typeof(sort_index) = 'integer' AND sort_index >= 0),
   PRIMARY KEY (resume_id, accomplishment_id),
   UNIQUE (resume_id, entry_id, sort_index),
   FOREIGN KEY (resume_id, entry_id) REFERENCES resume_entries (resume_id, entry_id) ON DELETE CASCADE,
@@ -82,7 +82,7 @@ CREATE TABLE resume_bullets (
 CREATE TABLE resume_skills (
   resume_id TEXT NOT NULL REFERENCES resumes (id) ON DELETE CASCADE,
   skill_id TEXT NOT NULL REFERENCES skills (id) ON DELETE RESTRICT,
-  sort_index INTEGER NOT NULL CHECK (sort_index >= 0),
+  sort_index INTEGER NOT NULL CHECK (typeof(sort_index) = 'integer' AND sort_index >= 0),
   PRIMARY KEY (resume_id, skill_id),
   UNIQUE (resume_id, sort_index)
 );
