@@ -54,6 +54,20 @@ function assertUnique(ids: string[], what: string): void {
   }
 }
 
+/** Required fields of each exported section (FR-05 mapping). */
+function assertRequired(resume: JsonResume): void {
+  const need = (items: Record<string, unknown>[] | undefined, section: string, keys: string[]) =>
+    (items ?? []).forEach((item, i) => {
+      for (const key of keys) {
+        if (typeof item[key] !== 'string') throw failed(`resume.${section}[${i}].${key} is missing`);
+      }
+    });
+  need(resume.work, 'work', ['name', 'position']);
+  need(resume.projects, 'projects', ['name']);
+  need(resume.skills, 'skills', ['name']);
+  need(resume.education, 'education', ['institution']);
+}
+
 /** Every exported string must be nonempty after trimming (FR-05: never emit empty strings). */
 function assertNoBlankStrings(value: unknown, path: string): void {
   if (typeof value === 'string') {
@@ -71,8 +85,8 @@ export function assembleResume(snap: Snapshot, resumeId: string): JsonResume {
   if (!snap.profile || typeof snap.profile.name !== 'string' || snap.profile.name.trim() === '') {
     throw new ServiceError('PROFILE_REQUIRED', 'Set your name in the profile before exporting');
   }
-  const ordering = snap.orderingProblems.get(resumeId);
-  if (ordering) throw failed(`stored ordering is inconsistent: ${ordering.join('; ')}`);
+  const ordering = snap.integrityProblems.get(resumeId);
+  if (ordering) throw failed(`stored selections are inconsistent: ${ordering.join('; ')}`);
   assertUnique([...config.experiences.map((s) => s.experienceId), ...config.projects.map((s) => s.projectId)], 'entry');
   assertUnique(
     [...config.experiences, ...config.projects].flatMap((s) => s.bullets.map((b) => b.accomplishmentId)),
@@ -109,6 +123,7 @@ export function assembleResume(snap: Snapshot, resumeId: string): JsonResume {
     });
   }
 
+  assertRequired(resume);
   assertNoBlankStrings(resume, 'resume');
   const errors = validateResumeDocument(resume);
   if (errors.length > 0) throw failed(`assembled document is not valid JSON Resume: ${errors.join('; ')}`);

@@ -81,16 +81,17 @@ export function readSnapshot(db: Db): Snapshot {
   for (const row of db.prepare('SELECT * FROM resumes ORDER BY id').all() as Row[]) {
     resumes.set(str(row.id), readConfiguration(db, str(row.id), str(row.name)));
   }
-  return { profile: readProfile(db), entries, accomplishments, variants, skills, resumes, orderingProblems: readOrderingProblems(db) };
+  return { profile: readProfile(db), entries, accomplishments, variants, skills, resumes, integrityProblems: readIntegrityProblems(db) };
 }
 
 /**
- * Every ordered group whose stored positions are not exactly the integers
+ * Per resume: selection rows with broken references (PRAGMA foreign_key_check),
+ * and every ordered group whose stored positions are not exactly the integers
  * 0..n-1. Positions are read as their SQLite type and decimal text, so a
  * non-integer value is reported (not coerced) and an integer too large for a
  * JavaScript number cannot make the read throw (which would block repair).
  */
-export function readOrderingProblems(db: Db): Map<string, string[]> {
+export function readIntegrityProblems(db: Db): Map<string, string[]> {
   const groups = db
     .prepare(
       `SELECT resume_id, grp, typeof(sort_index) AS t, CAST(sort_index AS TEXT) AS v FROM (
@@ -109,11 +110,24 @@ export function readOrderingProblems(db: Db): Map<string, string[]> {
     byGroup.set(key, entry);
   }
   const problems = new Map<string, string[]>();
+  const add = (resumeId: string, problem: string) => problems.set(resumeId, [...(problems.get(resumeId) ?? []), problem]);
+  // Selection rows whose references are broken (possible only if foreign keys
+  // were off when they were written); without this they would be silently
+  // skipped by readConfiguration.
+  const violations = db.prepare('PRAGMA foreign_key_check').all() as { table: string; rowid: number; parent: string }[];
+  for (const v of violations) {
+    if (!['resume_entries', 'resume_bullets', 'resume_skills'].includes(v.table)) continue;
+    const row = db.prepare(`SELECT * FROM ${v.table} WHERE rowid = ?`).get(v.rowid) as Record<string, unknown> | undefined;
+    if (!row) continue;
+    const detail = Object.entries(row)
+      .filter(([k]) => k !== 'resume_id' && k !== 'sort_index')
+      .map(([k, val]) => `${k}=${String(val)}`)
+      .join(', ');
+    add(String(row.resume_id), `${v.table} row (${detail}) references a missing ${v.parent} row`);
+  }
   for (const { resumeId, grp, values, typed } of byGroup.values()) {
     if (typed && values.every((v, i) => v === String(i))) continue;
-    const list = problems.get(resumeId) ?? [];
-    list.push(`${grp} positions are [${values.join(', ')}], expected 0..${values.length - 1}`);
-    problems.set(resumeId, list);
+    add(resumeId, `${grp} positions are [${values.join(', ')}], expected 0..${values.length - 1}`);
   }
   return problems;
 }

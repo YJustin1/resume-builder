@@ -91,9 +91,10 @@ export interface Snapshot {
   skills: Map<string, Skill>;
   resumes: Map<string, ResumeConfiguration>;
   /**
-   * Stored ordering that is not contiguous from zero, per resume ID (e.g. a
-   * gap introduced outside the service layer). The assembler must refuse to
-   * export these resumes (FR-05 step 1); saving the resume repairs them.
+   * Stored selection problems per resume ID: positions not contiguous from
+   * zero, or selection rows whose references are broken (e.g. written outside
+   * the service layer). The assembler refuses to export these resumes (FR-05
+   * step 1); saving the resume repairs them.
    */
-  orderingProblems: Map<string, string[]>;
+  integrityProblems: Map<string, string[]>;
 }

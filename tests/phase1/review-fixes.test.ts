@@ -175,14 +175,14 @@ describe('round 2 #5 a malformed fixture profile is a path-specific INVALID_INPU
 describe('round 2 #12 stored ordering gaps are visible in the snapshot', () => {
   it('a direct-SQL gap is reported per resume and a save repairs it', () => {
     const lib = freshLibrary('primary.input.json');
-    expect(lib.snapshot().orderingProblems).toEqual(new Map());
+    expect(lib.snapshot().integrityProblems).toEqual(new Map());
     lib.db.exec("UPDATE resume_bullets SET sort_index = 7 WHERE resume_id = 'r-security' AND accomplishment_id = 'a1'");
-    const problems = lib.snapshot().orderingProblems;
+    const problems = lib.snapshot().integrityProblems;
     expect([...problems.keys()]).toEqual(['r-security']);
     expect(problems.get('r-security')).toEqual(['bullets:e1 positions are [0, 7], expected 0..1']);
     const { id: _id, ...config } = lib.getResume('r-security');
     lib.saveResume('r-security', config);
-    expect(lib.snapshot().orderingProblems).toEqual(new Map());
+    expect(lib.snapshot().integrityProblems).toEqual(new Map());
   });
 });
 
@@ -198,10 +198,10 @@ describe('round 3 #12 stored positions must be real integers, read without loss'
     lib.db.exec(
       "UPDATE resume_bullets SET sort_index = 9223372036854775807 WHERE resume_id = 'r-security' AND accomplishment_id = 'a1'",
     );
-    const problems = lib.snapshot().orderingProblems;
+    const problems = lib.snapshot().integrityProblems;
     expect(problems.get('r-security')).toEqual(['bullets:e1 positions are [0, 9223372036854775807], expected 0..1']);
     const { id: _id, ...config } = lib.getResume('r-security');
     lib.saveResume('r-security', config);
-    expect(lib.snapshot().orderingProblems).toEqual(new Map());
+    expect(lib.snapshot().integrityProblems).toEqual(new Map());
   });
 });

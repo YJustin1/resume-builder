@@ -435,7 +435,7 @@ Configuration `PUT` (array order is the saved order). `name` and `experiences` a
   - Every `/api` request must address a loopback host (`127.0.0.1`, `localhost`, `[::1]`) in `Host`; otherwise `403`. This defeats DNS rebinding.
   - `POST`, `PUT`, `PATCH` and `DELETE` are refused with `403` when `Sec-Fetch-Site: cross-site` is sent, or when an `Origin` header is present and is not a loopback origin. Any port is allowed, so the UI dev server on another port works.
   - Request bodies must be `application/json` (`415` otherwise), so a cross-site "simple" `text/plain` or form POST cannot carry a write.
-  - No CORS headers are sent.
+  - No CORS headers are sent. The UI therefore calls the API with **relative `/api` URLs** from the same origin. In development the Vite dev server proxies `/api` to the API server; in the built app the API server serves the UI files. Allowing any loopback `Origin` port is defence in depth for proxied requests, not a cross-origin channel.
 - **Path IDs:** a malformed `:id` is `400 INVALID_INPUT` on every route; `404` is reserved for well-formed IDs that address nothing.
 - **Format:** `{ "error": { "code", "message", "affectedResumes"? } }`. `affectedResumes` appears only for `RECORD_IN_USE`.
 - **Success statuses:** create `201`, read and update `200`, delete `204`.
@@ -670,7 +670,9 @@ npm run check                             # typecheck + unit + integration + rea
 npm run check:baseline                    # §7.5 comparison
 ```
 
-- **Atomic demo reset:** the seed builds the complete new database in a temporary file inside `.demo/`, loading all fixtures in one transaction, and then atomically renames it over `demo.sqlite`. A failure (for example a malformed fixture) removes the temporary file and leaves the previous demo database byte-identical.
+- **Demo lock:** a running demo server holds `.demo/lock` (created atomically, failing if the path exists) for its lifetime, and `demo:seed` holds it for its whole check, build and publish sequence. A seed is therefore refused (exit 2, previous database unchanged) while a demo server or another seed runs, and two concurrent first seeds cannot both publish. A lock whose PID no longer exists is reclaimed.
+- **Atomic demo reset:** the seed builds the complete new database in a temporary file inside `.demo/`, loading all fixtures in one transaction, and then atomically renames it over `demo.sqlite`. A failure (for example a malformed fixture) removes the temporary file and leaves the previous demo database byte-identical. The rename is the last step: stale sidecar files of the old database are removed before it, so nothing can fail after publication.
+- **Personal mode with a broken demo location:** a dangling `.demo` symlink or a dangling `.demo/demo.sqlite` never blocks personal mode, because a missing target cannot be the same file. Demo mode still refuses both.
 - **Demo seed composition:** `demo:seed` loads `fixtures/primary.input.json` and `fixtures/overflow.input.json` into one database. Their IDs are disjoint, and their profiles are identical, which the loader asserts and fails on mismatch. This provides Security, Engineering and Overflow for §10. With `--with-sections`, it also loads `sections.input.json`, and the profile is then taken from that file (adding `label` and education). Demo exports are not test oracles.
 - **Database separation:**
   - `demo:seed` and `demo` always use the fixed path `./.demo/demo.sqlite` and **ignore `DB_PATH`**.

@@ -220,3 +220,78 @@ describe('server command, personal mode', () => {
     expect(existsSync(join(checkout, '.data', 'library.sqlite'))).toBe(true);
   }, 30_000);
 });
+
+describe('demo lock (review round 2)', () => {
+  function seedAsync(root: string, args: string[] = []) {
+    return new Promise<number | null>((resolve) => {
+      const child = spawn(process.execPath, [SEED, ...args], { env: baseEnv(root) });
+      child.once('exit', (code) => resolve(code));
+    });
+  }
+
+  it('a reset is refused while a demo server runs; the server keeps serving; after it stops the reset works', async () => {
+    const root = makeRoot();
+    expect(seed(root).status).toBe(0);
+    const demoFile = join(root, '.demo', 'demo.sqlite');
+    const before = bytes(demoFile);
+    const server = await start(baseEnv(root), ['--demo']);
+    try {
+      const run = seed(root);
+      expect(run.status).toBe(2);
+      expect(run.stderr).toMatch(/demo database is in use \(\d+ server\)/);
+      expect(bytes(demoFile)).toBe(before);
+      expect((await fetch(`${server.url}/api/resumes/r-security`)).status).toBe(200);
+    } finally {
+      await server.stop();
+    }
+    expect(existsSync(join(root, '.demo', 'lock'))).toBe(false);
+    expect(seed(root).status).toBe(0);
+  }, 60_000);
+
+  it('a second demo server cannot start while one holds the lock', async () => {
+    const root = makeRoot();
+    expect(seed(root).status).toBe(0);
+    const server = await start(baseEnv(root), ['--demo']);
+    try {
+      refusesToStart(root, {}, ['--demo']);
+    } finally {
+      await server.stop();
+    }
+  }, 30_000);
+
+  it('exactly one of two concurrent first seeds (without --reset) succeeds', async () => {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const root = makeRoot();
+      const codes = await Promise.all([seedAsync(root), seedAsync(root)]);
+      expect(codes.sort()).toEqual([0, 2]);
+    }
+  }, 60_000);
+
+  it('a stale lock from a dead process is reclaimed', () => {
+    const root = makeRoot();
+    mkdirSync(join(root, '.demo'));
+    writeFileSync(join(root, '.demo', 'lock'), '999999 seed\n');
+    expect(seed(root).status).toBe(0);
+    expect(existsSync(join(root, '.demo', 'lock'))).toBe(false);
+  });
+});
+
+describe('personal mode tolerates a broken demo location (review round 2)', () => {
+  it('a dangling .demo symlink does not block personal mode; demo mode refuses it', async () => {
+    const root = makeRoot();
+    symlinkSync(join(tempDir(), 'gone'), join(root, '.demo'));
+    const server = await start(baseEnv(root));
+    await server.stop();
+    refusesToStart(root, {}, ['--demo']);
+  }, 30_000);
+
+  it('a dangling .demo/demo.sqlite does not block an existing personal database', async () => {
+    const root = makeRoot();
+    const first = await start(baseEnv(root));
+    await first.stop();
+    mkdirSync(join(root, '.demo'));
+    symlinkSync(join(tempDir(), 'gone.sqlite'), join(root, '.demo', 'demo.sqlite'));
+    const again = await start(baseEnv(root));
+    await again.stop();
+  }, 30_000);
+});

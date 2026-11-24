@@ -39,10 +39,16 @@ function ensureRealDirectory(dir: string, what: string): void {
 }
 
 const inside = (target: string, dir: string) => target === dir || target.startsWith(dir + sep);
+/** Same device and inode. A missing or dangling target is never "the same file". */
 const sameFile = (a: string, b: string) => {
-  const sa = statSync(a);
-  const sb = statSync(b);
-  return sa.dev === sb.dev && sa.ino === sb.ino;
+  try {
+    const sa = statSync(a);
+    const sb = statSync(b);
+    return sa.dev === sb.dev && sa.ino === sb.ino;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return false;
+    throw error;
+  }
 };
 
 const reserved = (demoDir: string) =>

@@ -57,7 +57,7 @@ describe('assembly refuses instead of returning partial output', () => {
     api.lib.db.exec("UPDATE resume_bullets SET sort_index = 5 WHERE resume_id = 'r-security' AND accomplishment_id = 'a1'");
     const res = await api.exportJson('r-security');
     expect([res.status, res.code]).toEqual([500, 'ASSEMBLY_FAILED']);
-    expect(res.body.error.message).toMatch(/ordering is inconsistent/);
+    expect(res.body.error.message).toMatch(/selections are inconsistent/);
     expect((await api.exportJson('r-engineering')).body).toEqual(readFixture('engineering.expected.json'));
   });
   it('a broken reference in a snapshot -> ASSEMBLY_FAILED', () => {

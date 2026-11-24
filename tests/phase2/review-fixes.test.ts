@@ -130,3 +130,26 @@ describe('#4 blank values never reach a successful export', () => {
     expect((await api.exportJson('r-security')).body).toEqual(readFixture('security.expected.json'));
   });
 });
+
+describe('round 2 #11 orphaned selection rows make export fail instead of being dropped', () => {
+  it('a bullet row whose entry selection is missing -> ASSEMBLY_FAILED', async () => {
+    const api = new Api(freshLibrary('primary.input.json'));
+    api.lib.db.exec('PRAGMA foreign_keys = OFF');
+    api.lib.db.exec("INSERT INTO resume_bullets VALUES ('r-security', 'e3', 'a5', 'v51', 0)");
+    api.lib.db.exec('PRAGMA foreign_keys = ON');
+    const res = await api.exportJson('r-security');
+    expect([res.status, res.code]).toEqual([500, 'ASSEMBLY_FAILED']);
+    expect(res.body.error.message).toMatch(/resume_bullets row \(entry_id=e3, accomplishment_id=a5, variant_id=v51\) references a missing resume_entries row/);
+    expect((await api.exportJson('r-engineering')).body).toEqual(readFixture('engineering.expected.json'));
+  });
+});
+
+describe('round 2 #12 required export fields', () => {
+  it('an education item without an institution -> ASSEMBLY_FAILED naming the field', async () => {
+    const api = new Api(freshLibrary('primary.input.json'));
+    api.lib.db.exec(`UPDATE profile SET education_json = '[{}]'`);
+    const res = await api.exportJson('r-security');
+    expect([res.status, res.code]).toEqual([500, 'ASSEMBLY_FAILED']);
+    expect(res.body.error.message).toMatch(/resume\.education\[0\]\.institution is missing/);
+  });
+});
