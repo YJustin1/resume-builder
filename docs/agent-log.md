@@ -63,3 +63,53 @@ See docs/decisions.md (Phase 0) and docs/debugging.md #1.
 The last row was a test gap. The response was `tests/phase1/impact.test.ts`, which feeds a snapshot with reversed resume order; the mutant then fails 1 test.
 
 **Not yet covered (by design, later phases):** edit impact, exports, HTTP statuses through the API, rendering, T27 as a whole, T10 (server restart).
+
+## Phase 1 review — Codex code review (2026-11-24)
+
+**Instruction:** "Do a codex review of the results of phase 1 and phase 2."
+
+**Review:** `codex-review` (phase `code`, base `a3e4b5b`), 3 rounds; the final round had no blockers. All 12 findings were addressed with regression tests (commits `20e227a`, `cc5b99f`, `f341455`). Highlights:
+
+- **Data loss:** an omitted `experiences` silently cleared work selections; it is now required.
+- **Wrong error:** an ID that exists in the wrong role gave the wrong error code.
+- **Inconsistent snapshots:** snapshot reads were not one transaction. A real two-connection test now fails without the fix.
+- **Owner decision:** education items have no URL.
+- **Regression from my own fix:** after splitting the text validators, URLs skipped the Markdown-image check (round 2).
+- **Unsafe positions:** a text `sort_index` was coerced, and an oversized integer could make reads throw, which would block repair.
+
+## Phase 2 — assembly and HTTP API (2026-11-24)
+
+**Work:**
+
+- `src/core/`:
+  - `apply.ts`: create/patch rules shared by writes and impact analysis;
+  - `assemble.ts` (FR-05): refuses on a missing profile, ordering gaps, broken references or schema failure;
+  - `impact.ts`: edit impact = resumes whose assembled JSON differs, with failure states compared as states.
+- `src/server/`:
+  - `app.ts`: Hono routes for §6, except preview and PDF;
+  - `paths.ts`: §9 personal and demo database locations;
+  - `main.ts`: server on loopback;
+  - `demo-seed.ts`.
+- `tests/phase2/`: every fixture through HTTP with exact exports and `expectedImpact`; T01 including determinism and reversed insertion order; T10 with two real server processes on one file DB; T18; T27; the §9 isolation tests 1–7; error handling with no stack traces.
+
+**Fixture fix:** T09c's impact step lacked `"status": 200` (authoring omission, logged in fixtures/README.md).
+
+**Check:** `npm run check` gives typecheck clean and 141 passed, 19 todo. The todos are all rendering (Phase 3).
+
+**Planted faults:**
+
+| Fault | Failing tests |
+|---|---|
+| first wording instead of the selected one | 23 |
+| bullets reversed | 22 |
+| last bullet dropped | 30 |
+| empty `summary` emitted | 28 |
+| empty skills section emitted | 26 |
+| ordering gaps ignored | 1 |
+| edit impact = every resume with work | 5 |
+| failure states never equal | 1 |
+| first `PUT /api/profile` returns 200 | 1 |
+| DB_PATH symlink not followed | 1 |
+| demo-file symlink check removed | 0 |
+
+The last row is an equivalent mutant, not a gap: `lstat` never reports `isFile()` for a symlink, so the remaining check still refuses it.
