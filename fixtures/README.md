@@ -45,3 +45,4 @@ Experience and project IDs share one namespace (one `entries` table in the datab
   - No existing value was changed or removed.
   - Reason: EVALUATION.md §9 (Projects and skills requirements; bullet-to-employer ordering; required overflow warning).
 - **v2 approval (2026-11-24):** the owner approved every v2 fixture file listed above. The `<case>.pdf.text.txt` goldens do not exist yet; each still needs its own owner review when it is created in Phase 3.
+- **Phase 2 (2026-11-24):** added the missing `"status": 200` to the first (impact) step of T09c in `primary-mutations.expected.json`. Authoring omission found when the HTTP runner first ran; no expected value changed.

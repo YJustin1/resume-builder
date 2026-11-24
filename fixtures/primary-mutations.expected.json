@@ -410,6 +410,7 @@
               "text": "  Reviewed alert patterns to identify suspicious requests.  "
             }
           },
+          "status": 200,
           "expectedImpact": []
         },
         {
