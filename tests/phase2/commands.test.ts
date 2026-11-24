@@ -297,7 +297,7 @@ describe('demo lock (review round 2)', () => {
       const runs = await Promise.all([seedAsync(root, ['--reset']), seedAsync(root, ['--reset'])]);
       expect(runs.map((r) => r.code).sort(), runs.map((r) => r.err).join(' | ')).toEqual([0, 2]);
       const loser = runs.find((r) => r.code === 2)!;
-      expect(loser.err).toMatch(/published while this one waited|in use by another demo server or seed/);
+      expect(loser.err).toMatch(/held the demo lock while this seed was starting|in use by another demo server or seed/);
     }
   }, 120_000);
 });
@@ -371,4 +371,49 @@ describe('interrupted writes: refuse and touch nothing (owner decision)', () => 
       expect(existsSync(demoFile)).toBe(false);
     }
   });
+});
+
+describe('demo lock boundaries (verification round 2)', () => {
+  function spawnSeed(root: string, extra: Record<string, string>, args = ['--reset']) {
+    const child = spawn(process.execPath, [SEED, ...args], { env: baseEnv(root, extra) });
+    let err = '';
+    child.stderr.on('data', (d) => (err += d));
+    const done = new Promise<{ code: number | null; err: string }>((resolve) =>
+      child.once('exit', (code) => resolve({ code, err })),
+    );
+    return done;
+  }
+  async function waitFor(path: string) {
+    for (let i = 0; i < 500 && !existsSync(path); i++) await new Promise((r) => setTimeout(r, 20));
+    expect(existsSync(path), `${path} should appear`).toBe(true);
+  }
+
+  it('a seed arriving after another has published but before it released the lock exits 2', async () => {
+    const root = makeRoot();
+    expect(seed(root).status).toBe(0);
+    const marker = join(tempDir(), 'after-publish');
+    const first = spawnSeed(root, { RB_TEST_PAUSE_AFTER_PUBLISH: marker });
+    await waitFor(marker); // first has renamed the new database and still holds the lock
+    const second = seed(root);
+    expect(second.status).toBe(2);
+    expect(second.stderr).toMatch(/in use by another demo server or seed/);
+    rmSync(marker);
+    expect((await first).code).toBe(0);
+  }, 60_000);
+
+  it('a seed that read the epoch, then waited while another seed held and released the lock, exits 2', async () => {
+    const root = makeRoot();
+    expect(seed(root).status).toBe(0);
+    const marker = join(tempDir(), 'before-lock');
+    const waiting = spawnSeed(root, { RB_TEST_PAUSE_BEFORE_LOCK: marker });
+    await waitFor(marker); // waiting has read the epoch, not yet locked
+    expect(seed(root).status).toBe(0); // another seed runs completely
+    const demoFile = join(root, '.demo', 'demo.sqlite');
+    const published = bytes(demoFile);
+    rmSync(marker);
+    const result = await waiting;
+    expect(result.code).toBe(2);
+    expect(result.err).toMatch(/held the demo lock while this seed was starting; nothing was changed/);
+    expect(bytes(demoFile)).toBe(published);
+  }, 60_000);
 });

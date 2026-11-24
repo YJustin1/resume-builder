@@ -2,9 +2,9 @@
 // composition"). Writes only to the validated `<root>/.demo/demo.sqlite`,
 // ignores DB_PATH, and refuses to overwrite without --reset.
 //
-// The whole run holds the demo lock (refused while a demo server or another
-// seed holds it). A seed that had to wait for the lock re-checks the demo
-// file's identity and refuses if another seed published meanwhile. The old
+// The whole run holds the demo lock; contention with a live holder, or a
+// holder that came and went while this seed was starting, is a refusal (see
+// demo-lock.ts). The old
 // database is never opened or modified: if any SQLite sidecar file exists
 // (left by an interrupted write), the reset is refused with instructions, so a
 // refused reset always leaves the old database byte-identical. The new
@@ -18,7 +18,7 @@ import { isDeepStrictEqual } from 'node:util';
 import { openDatabase, transaction } from '../db/database.ts';
 import { Library } from '../db/library.ts';
 import { loadFixture } from '../db/seed.ts';
-import { acquireDemoLock } from './demo-lock.ts';
+import { acquireDemoLock, testPause } from './demo-lock.ts';
 import { lstatOrNull, PathError, prepareDemoDbPath, REPO_ROOT } from './paths.ts';
 
 const args = process.argv.slice(2);
@@ -27,19 +27,13 @@ const withSections = args.includes('--with-sections');
 const fixture = (name: string) =>
   JSON.parse(readFileSync(join(REPO_ROOT, 'fixtures', name), 'utf8')) as Record<string, unknown>;
 
-/** The demo file's identity (inode, mtime, size), or "absent". */
-const identity = (file: string) => {
-  const st = lstatOrNull(file);
-  return st ? `${st.ino}:${st.mtimeMs}:${st.size}` : 'absent';
-};
-
 /** Refuse if SQLite recovery/sidecar files exist (lstat: dangling symlinks count). */
 function refuseIfSidecars(file: string): void {
   const found = ['-journal', '-wal', '-shm'].map((s) => file + s).filter((p) => lstatOrNull(p) !== null);
   if (found.length > 0) {
     throw new PathError(
       `the demo database has SQLite recovery files left by an interrupted write (${found.join(', ')}); ` +
-        'run `npm run demo` once so SQLite recovers it, or delete the .demo/ directory, then retry',
+        'stop every demo server and seed, then either run `npm run demo` once and stop it again (SQLite recovers the file when it opens it) or delete the .demo/ directory, then retry',
     );
   }
 }
@@ -48,11 +42,7 @@ let temp: string | undefined;
 let releaseLock: (() => void) | undefined;
 try {
   const file = prepareDemoDbPath(REPO_ROOT);
-  const seen = identity(file);
   releaseLock = acquireDemoLock(dirname(file), 'seed');
-  if (identity(file) !== seen) {
-    throw new PathError('another demo seed published while this one waited for the lock; nothing was changed');
-  }
   if (existsSync(file) && !reset) throw new PathError(`${file} already exists; pass --reset to replace it`);
   refuseIfSidecars(file);
 
@@ -86,6 +76,7 @@ try {
   refuseIfSidecars(file); // again, immediately before publishing
   renameSync(temp, file); // the commit point: atomic replacement on the same filesystem
   temp = undefined;
+  testPause('AFTER_PUBLISH');
   process.stdout.write(`demo database ready: ${file} (resumes: ${names.join(', ')})\n`);
   try {
     releaseLock();
