@@ -8,7 +8,7 @@ These fixtures contain no real candidate data. Expected files are written by han
 |---|---|
 | `primary.input.json`, `security.expected.json`, `engineering.expected.json`, `deletion.expected.json`, `overflow.input.json` | Original set (approved by owner before v2) |
 | `security.pdf.expected.json`, `overflow.pdf.expected.json` | Original set, plus additive v2 fields (see change log) |
-| `overflow.expected.json`, `first-run.expected.json`, `primary-mutations.expected.json`, `shared-edit.*`, `sections.*`, `sections-mutations.expected.json`, `deletion-more.expected.json`, `invalid-configs.json`, `text-handling.expected.json` | **New in v2 — pending owner approval before the corresponding feature is implemented** |
+| `overflow.expected.json`, `first-run.expected.json`, `primary-mutations.expected.json`, `shared-edit.*`, `sections.*`, `sections-mutations.expected.json`, `deletion-more.expected.json`, `invalid-configs.json`, `text-handling.expected.json` | New in v2 — **approved by owner (2026-11-24)** |
 
 ## Input format (`*.input.json`)
 
@@ -44,3 +44,4 @@ Experience and project IDs share one namespace (one `entries` table in the datab
   - In `overflow.pdf.expected.json`, added `overflowWarning: true`.
   - No existing value was changed or removed.
   - Reason: EVALUATION.md §9 (Projects and skills requirements; bullet-to-employer ordering; required overflow warning).
+- **v2 approval (2026-11-24):** the owner approved every v2 fixture file listed above. The `<case>.pdf.text.txt` goldens do not exist yet; each still needs its own owner review when it is created in Phase 3.

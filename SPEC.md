@@ -11,20 +11,20 @@
 |---|---|---|
 | D1 | Architecture: a small independent application that reuses published JSON Resume packages. No fork of jsonresume.org; the upstream app is used only as the executed behavioural baseline (§7.5). | Approved by owner |
 | D2 | Rendering: `resumed` (`render`, `pdf`) with `jsonresume-theme-even` | Approved by owner |
-| D3 | Theme: `jsonresume-theme-even@0.27.0`; fallbacks in §3.3 | Default, owner to confirm |
-| D4 | Runtime: Node 24 LTS (installation method is the owner's choice) | Default, owner to confirm |
-| D5 | Database: SQLite via built-in `node:sqlite` | Default, owner to confirm |
-| D6 | Projects export `name`, `url`, `startDate`, `endDate`, `highlights`; no `summary`/`description` in the MVP (Even ignores `summary`, and `description` is deprecated) | Default, owner to confirm |
-| D7 | Skills are selected per resume as whole records (no per-resume keyword subsets) | Default, owner to confirm |
-| D8 | Education and profile (`basics`) are global and always included | Default, owner to confirm |
-| D9 | Text is stored and exported exactly as entered. Inline Markdown is interpreted by the theme, per JSON Resume 1.11; documented as a known limitation (T16b) | Default, owner to confirm |
-| D10 | No network control during printing (`resumed` exposes none). Export must still work offline; fonts fall back | Default, owner to confirm |
-| D11 | The page-count / overflow warning comes from the generated PDF and is shown on PDF export | Default, owner to confirm |
-| D12 | Section order is the theme's fixed order (Even: Work, Education, Projects, Skills); order within each section is ours | Default, owner to confirm |
-| D13 | `start` tag content as in §12 | Default, owner to confirm |
-| D14 | New fixture files; existing expected values unchanged (additive fields only) | Default, owner to confirm |
-| D15 | Keep the identifier `variant` in data, API and code, but call it a **wording variant** in UI and docs. It is never a "resume variant" (upstream's term for a whole-resume copy) | Default, owner to confirm |
-| D16 | Dates use the JSON Resume `iso8601` subset: `YYYY`, `YYYY-MM`, `YYYY-MM-DD` | Default, owner to confirm |
+| D3 | Theme: `jsonresume-theme-even@0.27.0`; fallbacks in §3.3 | Approved by owner (2026-11-24) |
+| D4 | Runtime: Node 24 LTS (owner installed v24.22.3 via fnm) | Approved by owner (2026-11-24) |
+| D5 | Database: SQLite via built-in `node:sqlite` | Approved by owner (2026-11-24) |
+| D6 | Projects export `name`, `url`, `startDate`, `endDate`, `highlights`; no `summary`/`description` in the MVP (Even ignores `summary`, and `description` is deprecated) | Approved by owner (2026-11-24) |
+| D7 | Skills are selected per resume as whole records (no per-resume keyword subsets) | Approved by owner (2026-11-24) |
+| D8 | Education and profile (`basics`) are global and always included | Approved by owner (2026-11-24) |
+| D9 | Text is stored and exported exactly as entered. Inline Markdown is interpreted by the theme, per JSON Resume 1.11; documented as a known limitation (T16b) | Approved by owner (2026-11-24) |
+| D10 | No network control during printing (`resumed` exposes none). Export must still work offline; fonts fall back | Approved by owner (2026-11-24) |
+| D11 | The page-count / overflow warning comes from the generated PDF and is shown on PDF export | Approved by owner (2026-11-24) |
+| D12 | Section order is the theme's fixed order (Even: Work, Education, Projects, Skills); order within each section is ours | Approved by owner (2026-11-24) |
+| D13 | `start` tag content as in §12 | Approved by owner (2026-11-24) |
+| D14 | New fixture files; existing expected values unchanged (additive fields only) | Approved by owner (2026-11-24) |
+| D15 | Keep the identifier `variant` in data, API and code, but call it a **wording variant** in UI and docs. It is never a "resume variant" (upstream's term for a whole-resume copy) | Approved by owner (2026-11-24) |
+| D16 | Dates use the JSON Resume `iso8601` subset: `YYYY`, `YYYY-MM`, `YYYY-MM-DD` | Approved by owner (2026-11-24) |
 | D17 | `basics.label` is global; `basics.summary` is **not supported** in the MVP; no per-resume headline | Approved by owner (summary excluded) |
 
 Agents must not change any of these without owner approval.
