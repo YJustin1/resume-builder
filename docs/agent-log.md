@@ -132,3 +132,28 @@ The last row is an equivalent mutant, not a gap: `lstat` never reports `isFile()
 - a flaky concurrency test exposed a real SQLite lock-upgrade collision (docs/debugging.md #2).
 
 **Check:** `npm run check` gives 175 passed, 19 todo (rendering, Phase 3).
+
+## Phase 2 verification review — fresh Codex session (2026-11-24)
+
+**Instruction:** "Sure, run a session. Push when you finish."
+
+**Review:** `codex-review` (phase `code`, base `7aaa47e`), 3 rounds, each with 1–3 blockers, all confined to the demo-database lock and reset path:
+
+| Round | Finding | Fix |
+|---|---|---|
+| 1 | A waiting `--reset` could publish after another | Identity re-check (later replaced) |
+| 1 | Orphaned sidecars without a database | `lstat` check before every publish |
+| 1 | Premise: in-place recovery vs byte-identical refusal | **Owner decision:** refuse and touch nothing; recovery happens only when the demo server opens the file |
+| 2 | Post-rename, pre-release window | A lock **epoch** read before locking (busy = refuse) and re-checked after acquiring |
+| 3 | A publisher killed after its rename rolled back the epoch | Commit the epoch at acquisition; EXCLUSIVE locking mode keeps the lock |
+
+**Response:**
+
+- each fix has a deterministic process-level test, using the test-only pause points `RB_TEST_PAUSE_BEFORE_LOCK` and `RB_TEST_PAUSE_AFTER_PUBLISH`;
+- each fix was confirmed by reverting it in a scratch copy;
+- the lock tests passed 5–8 consecutive reruns at each stage;
+- a regex mismatch first looked like a flaky test, but the captured stderr showed correct behaviour with new wording.
+
+**Status:** the cap was reached; the round-3 fix (epoch commit timing) is verified by tests but not yet by Codex.
+
+**Check:** `npm run check` gives 180 passed, 19 todo.
