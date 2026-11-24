@@ -1,13 +1,23 @@
 // HTTP API (SPEC §6). A thin layer over the service: parse JSON, call one
 // Library method, map ServiceErrors to `{ error: { code, message,
-// affectedResumes? } }`. Phase 2 serves everything except /preview and
-// /export/pdf (Phase 3).
+// affectedResumes? } }`. Preview and PDF export go through the rendering
+// adapter (src/render), which enforces the runtime content policy.
 
 import { Hono, type Context } from 'hono';
 import { invalidInput, notFound, ServiceError } from '../core/errors.ts';
 import { id as checkId } from '../core/fields.ts';
 import type { EntryKind } from '../core/types.ts';
 import type { Library } from '../db/library.ts';
+import { createRenderer, type Renderer } from '../render/adapter.ts';
+
+/** SPEC §3.5 rule 4: the preview may load only the theme's fonts and inline styles; no scripts, no remote images. */
+export const PREVIEW_CSP =
+  "default-src 'none'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data:";
+
+export interface AppOptions {
+  /** Rendering adapter; tests inject failing or instrumented ones (T14, §7.3 self-tests). */
+  renderer?: Renderer;
+}
 
 function errorBody(error: ServiceError) {
   return {
@@ -72,8 +82,9 @@ function guard(c: Context): void {
   }
 }
 
-export function createApp(lib: Library): Hono {
+export function createApp(lib: Library, options: AppOptions = {}): Hono {
   const app = new Hono();
+  const renderer = options.renderer ?? createRenderer();
 
   app.use('/api/*', async (c, next) => {
     guard(c);
@@ -81,7 +92,12 @@ export function createApp(lib: Library): Hono {
   });
 
   app.onError((error, c) => {
-    if (error instanceof ServiceError) return c.json(errorBody(error), error.status as 400);
+    if (error instanceof ServiceError) {
+      if (error.code === 'RENDER_FAILED' && error.cause !== undefined) {
+        console.error(`RENDER_FAILED: ${error.message}:`, error.cause); // server log only
+      }
+      return c.json(errorBody(error), error.status as 400);
+    }
     // No stack traces or internal messages to clients (SPEC §6).
     return c.json({ error: { code: 'ASSEMBLY_FAILED', message: 'Unexpected server error' } }, 500);
   });
@@ -156,6 +172,24 @@ export function createApp(lib: Library): Hono {
     const doc = lib.assemble(id);
     c.header('Content-Disposition', `attachment; filename="resume-${id}.json"`);
     return c.json(doc);
+  });
+  app.get('/api/resumes/:id/preview', async (c) => {
+    const html = await renderer.renderHtml(lib.assemble(pid(c)));
+    c.header('Content-Security-Policy', PREVIEW_CSP);
+    c.header('X-Content-Type-Options', 'nosniff');
+    c.header('Cache-Control', 'no-store');
+    return c.html(html);
+  });
+  app.get('/api/resumes/:id/export/pdf', async (c) => {
+    const id = pid(c);
+    const { bytes, pageCount } = await renderer.renderPdf(lib.assemble(id));
+    return c.body(bytes as Uint8Array<ArrayBuffer>, 200, {
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename="resume-${id}.pdf"`,
+      'X-Page-Count': String(pageCount),
+      'X-Overflow-Warning': String(pageCount > 1),
+      'Cache-Control': 'no-store',
+    });
   });
 
   return app;
