@@ -45,12 +45,40 @@ function entryOf(snap: Snapshot, id: string, kind: EntryKind): Entry {
   return entry;
 }
 
+/** Each entry, accomplishment and skill may appear at most once per resume. */
+function assertUnique(ids: string[], what: string): void {
+  const seen = new Set<string>();
+  for (const id of ids) {
+    if (seen.has(id)) throw failed(`${what} ${id} is selected more than once`);
+    seen.add(id);
+  }
+}
+
+/** Every exported string must be nonempty after trimming (FR-05: never emit empty strings). */
+function assertNoBlankStrings(value: unknown, path: string): void {
+  if (typeof value === 'string') {
+    if (value.trim() === '') throw failed(`${path} is empty`);
+  } else if (Array.isArray(value)) {
+    value.forEach((v, i) => assertNoBlankStrings(v, `${path}[${i}]`));
+  } else if (value && typeof value === 'object') {
+    for (const [k, v] of Object.entries(value)) assertNoBlankStrings(v, `${path}.${k}`);
+  }
+}
+
 export function assembleResume(snap: Snapshot, resumeId: string): JsonResume {
   const config = snap.resumes.get(resumeId);
   if (!config) throw notFound(`resume ${resumeId} does not exist`);
-  if (!snap.profile) throw new ServiceError('PROFILE_REQUIRED', 'Set your name in the profile before exporting');
+  if (!snap.profile || typeof snap.profile.name !== 'string' || snap.profile.name.trim() === '') {
+    throw new ServiceError('PROFILE_REQUIRED', 'Set your name in the profile before exporting');
+  }
   const ordering = snap.orderingProblems.get(resumeId);
   if (ordering) throw failed(`stored ordering is inconsistent: ${ordering.join('; ')}`);
+  assertUnique([...config.experiences.map((s) => s.experienceId), ...config.projects.map((s) => s.projectId)], 'entry');
+  assertUnique(
+    [...config.experiences, ...config.projects].flatMap((s) => s.bullets.map((b) => b.accomplishmentId)),
+    'accomplishment',
+  );
+  assertUnique(config.skills, 'skill');
 
   const resume: JsonResume = {
     basics: pick(snap.profile, ['name', 'label', 'email', 'phone', 'url']) as Record<string, string>,
@@ -81,6 +109,7 @@ export function assembleResume(snap: Snapshot, resumeId: string): JsonResume {
     });
   }
 
+  assertNoBlankStrings(resume, 'resume');
   const errors = validateResumeDocument(resume);
   if (errors.length > 0) throw failed(`assembled document is not valid JSON Resume: ${errors.join('; ')}`);
   return resume;

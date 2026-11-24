@@ -126,7 +126,22 @@ describe('HTTP versions of the deletion and configuration gates', () => {
       for (const [resumeId, file] of Object.entries(a.unchangedExports as Record<string, string>)) {
         expect((await api.exportJson(resumeId)).body, `${a.case} ${resumeId}`).toEqual(readFixture(file));
       }
+      for (const id of a.recordsAbsent ?? []) expect(recordExists(api.lib, id), `${a.case} ${id} absent`).toBe(false);
+      for (const id of a.recordsStillPresent ?? []) expect(recordExists(api.lib, id), `${a.case} ${id} present`).toBe(true);
     }
+  });
+
+  it('T06 HTTP: unused v41, a4 and e3 delete with their children; both exports unchanged', async () => {
+    const api = new Api(freshLibrary('primary.input.json'));
+    for (const path of ['/api/variants/v41', '/api/accomplishments/a4', '/api/experiences/e3']) {
+      expect((await api.call('DELETE', path)).status, path).toBe(204);
+    }
+    for (const id of ['v41', 'a4', 'e3', 'a5', 'v51']) expect(recordExists(api.lib, id), id).toBe(false);
+    for (const id of ['e1', 'e2', 'a1', 'a2', 'a3', 'v11', 'v12', 'v21', 'v22', 'v31', 'v32']) {
+      expect(recordExists(api.lib, id), id).toBe(true);
+    }
+    expect((await api.exportJson('r-security')).body).toEqual(readFixture('security.expected.json'));
+    expect((await api.exportJson('r-engineering')).body).toEqual(readFixture('engineering.expected.json'));
   });
 
   it('T07 continued: deleting r-security; Engineering identical; lookup 404', async () => {

@@ -427,8 +427,16 @@ Configuration `PUT` (array order is the saved order). `name` and `experiences` a
 | `409 RECORD_IN_USE` | A restricted delete |
 | `409 PROFILE_REQUIRED` | Export, or profile `PATCH`, before a profile exists (FR-01a) |
 | `409 CONTENT_POLICY_VIOLATION` | The rendered HTML breaks the §3.5 asset/link policy; nothing is printed |
+| `403 FORBIDDEN_ORIGIN` | Request refused by the local API protection rule below |
+| `415 UNSUPPORTED_MEDIA_TYPE` | A request body that is not `application/json` |
 | `500 ASSEMBLY_FAILED` / `500 RENDER_FAILED` | Internal or render failures |
 
+- **Local API protection (browser trust boundary):** loopback binding alone does not stop a web page in the user's browser from sending requests.
+  - Every `/api` request must address a loopback host (`127.0.0.1`, `localhost`, `[::1]`) in `Host`; otherwise `403`. This defeats DNS rebinding.
+  - `POST`, `PUT`, `PATCH` and `DELETE` are refused with `403` when `Sec-Fetch-Site: cross-site` is sent, or when an `Origin` header is present and is not a loopback origin. Any port is allowed, so the UI dev server on another port works.
+  - Request bodies must be `application/json` (`415` otherwise), so a cross-site "simple" `text/plain` or form POST cannot carry a write.
+  - No CORS headers are sent.
+- **Path IDs:** a malformed `:id` is `400 INVALID_INPUT` on every route; `404` is reserved for well-formed IDs that address nothing.
 - **Format:** `{ "error": { "code", "message", "affectedResumes"? } }`. `affectedResumes` appears only for `RECORD_IN_USE`.
 - **Success statuses:** create `201`, read and update `200`, delete `204`.
 - No stack traces in the UI.
@@ -662,6 +670,7 @@ npm run check                             # typecheck + unit + integration + rea
 npm run check:baseline                    # §7.5 comparison
 ```
 
+- **Atomic demo reset:** the seed builds the complete new database in a temporary file inside `.demo/`, loading all fixtures in one transaction, and then atomically renames it over `demo.sqlite`. A failure (for example a malformed fixture) removes the temporary file and leaves the previous demo database byte-identical.
 - **Demo seed composition:** `demo:seed` loads `fixtures/primary.input.json` and `fixtures/overflow.input.json` into one database. Their IDs are disjoint, and their profiles are identical, which the loader asserts and fails on mismatch. This provides Security, Engineering and Overflow for §10. With `--with-sections`, it also loads `sections.input.json`, and the profile is then taken from that file (adding `label` and education). Demo exports are not test oracles.
 - **Database separation:**
   - `demo:seed` and `demo` always use the fixed path `./.demo/demo.sqlite` and **ignore `DB_PATH`**.
@@ -681,9 +690,9 @@ npm run check:baseline                    # §7.5 comparison
     3. If `lstat` reports a symlink whose target does not exist (dangling), refuse.
     4. If nothing exists at `DB_PATH`, the resolved target is `realpath(dirname(DB_PATH)) + "/" + basename(DB_PATH)`.
 
-    The command refuses to start if the resolved target is `R/.demo` or anything under it. A personal database can therefore never be, or alias, the demo reset target.
+    The command refuses to start if the resolved target is `R/.demo` or anything under it. Paths are canonicalized with `realpath.native`, so an alternate-case spelling on a case-insensitive filesystem resolves to `.demo`. It also refuses if any existing ancestor of the target is the same directory as `.demo` (device + inode), or if the target is the same file as `.demo/demo.sqlite` (a hard link). A personal database can therefore never be, or alias, the demo reset target.
   - Test commands use temporary directories only.
-- **Required isolation tests:**
+- **Required isolation tests:** run through the real `demo:seed` and server commands against isolated temporary roots (`RB_ROOT`, a test-only override of the repository root), asserting file bytes, exit status 2 on refusal, and successful startup:
   1. Create a personal database, run `demo:seed -- --reset`, and assert the personal file's bytes are unchanged.
   2. `DB_PATH=./.demo/demo.sqlite npm run dev` (and an equivalent path such as `./.demo/../.demo/demo.sqlite`) is refused with a clear error.
   3. If `.demo/demo.sqlite` is a symlink to a file outside `.demo/`, `demo:seed -- --reset` is refused and the target's bytes are unchanged.

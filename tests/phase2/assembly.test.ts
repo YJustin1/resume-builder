@@ -81,10 +81,14 @@ describe('assembly refuses instead of returning partial output', () => {
 describe('HTTP error handling (§6)', () => {
   it('malformed JSON, empty body and unknown routes', async () => {
     const api = new Api(freshLibrary('primary.input.json'));
-    const bad = await api.app.request('/api/variants/v11', { method: 'PATCH', body: '{not json' });
+    const bad = await api.app.request('/api/variants/v11', {
+      method: 'PATCH',
+      body: '{not json',
+      headers: { 'content-type': 'application/json' },
+    });
     expect(bad.status).toBe(400);
     expect(await bad.json()).toEqual({ error: { code: 'INVALID_INPUT', message: 'request body is not valid JSON' } });
-    expect((await api.app.request('/api/profile', { method: 'PUT' })).status).toBe(400);
+    expect((await api.app.request('/api/profile', { method: 'PUT', headers: { 'content-type': 'application/json' } })).status).toBe(400);
     const missing = await api.call('GET', '/api/nope');
     expect([missing.status, missing.code]).toEqual([404, 'NOT_FOUND']);
   });

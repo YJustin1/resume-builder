@@ -80,7 +80,9 @@ describe('T10 persistence across a real server restart', () => {
   }, 30_000);
 });
 
-describe('§9 database-location isolation', () => {
+// Unit-level checks of the path helpers; tests/phase2/commands.test.ts runs the
+// same §9 cases through the real seed and server commands.
+describe('§9 path helpers (unit level)', () => {
   /** A fake repository root with its own .data/.demo. */
   const fakeRepo = () => {
     const repo = tempDir();
