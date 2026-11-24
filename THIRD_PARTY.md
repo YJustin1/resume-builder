@@ -35,3 +35,4 @@ Application dependencies added after `start` (for example React, Vite, an HTTP s
 | `@types/node` (dev) | 24.19.2 | MIT | Phase 1 | Node 24 type definitions |
 | `hono` | 4.13.21 | MIT | Phase 2 | HTTP routing for the local API |
 | `@hono/node-server` | 2.1.11 | MIT | Phase 2 | Serves the Hono app on Node (`src/server/main.ts`) |
+| `parse5` | 8.1.1 | MIT | Phase 3 | HTML parser for the runtime content policy (SPEC §3.5) on every rendered document before preview or printing, and for the printed-bullet check in tests. Brings in `entities` 9.0.0 (BSD-2-Clause) |
