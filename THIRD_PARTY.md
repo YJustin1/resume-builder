@@ -30,4 +30,6 @@ Application dependencies added after `start` (for example React, Vite, an HTTP s
 
 | Package | Version | Licence | Added in | Role |
 |---|---|---|---|---|
-| — | — | — | — | — |
+| `typescript` (dev) | 7.0.2 | Apache-2.0 | Phase 1 | Type checking (`npm run typecheck`); sources run directly on Node 24 type stripping |
+| `vitest` (dev) | 5.1.1 | MIT | Phase 1 | Test runner |
+| `@types/node` (dev) | 24.19.2 | MIT | Phase 1 | Node 24 type definitions |
