@@ -1,12 +1,26 @@
 // Service layer (SPEC §5 FR-01, FR-01a, FR-02, FR-03). Every public method
 // validates its whole input before writing, runs in one transaction, and
-// throws a ServiceError on failure, so a failed call changes nothing.
+// throws a ServiceError on failure, so a failed call changes nothing. Field
+// rules live in ../core/apply.ts and are shared with impact analysis.
 
 import { randomUUID } from 'node:crypto';
+import {
+  newAccomplishment,
+  newEntry,
+  newProfile,
+  newSkill,
+  newVariant,
+  patchedAccomplishment,
+  patchedEntry,
+  patchedProfile,
+  patchedSkill,
+  patchedVariant,
+} from '../core/apply.ts';
+import { assembleResume, type JsonResume } from '../core/assemble.ts';
 import { validateConfiguration } from '../core/configuration.ts';
 import { invalidInput, notFound, ServiceError } from '../core/errors.ts';
 import { id as checkId, plainText } from '../core/fields.ts';
-import { deleteImpact, recordInUse, type DeletableType, type Impact } from '../core/impact.ts';
+import { impactOf, recordInUse, type DeletableType, type Impact } from '../core/impact.ts';
 import type {
   Accomplishment,
   Entry,
@@ -19,24 +33,14 @@ import type {
   Variant,
 } from '../core/types.ts';
 import { transaction, type Db } from './database.ts';
-import {
-  ACCOMPLISHMENT_RULES,
-  build,
-  checkDates,
-  PROFILE_RULES,
-  PROJECT_RULES,
-  SKILL_RULES,
-  VARIANT_RULES,
-  WORK_RULES,
-} from './rules.ts';
-import { readConfiguration, readProfile, readSnapshot, rowToEntry } from './snapshot.ts';
+import { readConfiguration, readProfile, readSnapshot } from './snapshot.ts';
 
 /** Test-harness and seed-loader option: create a record with a fixed ID. */
 export interface CreateOptions {
   id?: string;
 }
 
-const nullable = (v: unknown) => (v === undefined ? null : (v as string));
+const nullable = (v: string | undefined) => (v === undefined ? null : v);
 
 export class Library {
   readonly db: Db;
@@ -68,6 +72,18 @@ export class Library {
     return id;
   }
 
+  // ---- Assembly and impact (FR-04, FR-05) ------------------------------------
+
+  /** Assemble one saved resume from a consistent snapshot. */
+  assemble(resumeId: string): JsonResume {
+    return assembleResume(this.snapshot(), resumeId);
+  }
+
+  /** Impact of a proposed edit or delete (POST /api/impact). Read-only. */
+  impact(change: unknown): Impact {
+    return impactOf(this.snapshot(), change);
+  }
+
   // ---- Profile (FR-01, FR-01a) -------------------------------------------
 
   getProfile(): Profile | null {
@@ -76,10 +92,10 @@ export class Library {
 
   /** Replace or create. Returns whether the profile was created (201) or replaced (200). */
   putProfile(body: unknown): { created: boolean; profile: Profile } {
-    const p = build(body, PROFILE_RULES, 'profile');
+    const profile = newProfile(body);
     return transaction(this.db, () => {
       const created = readProfile(this.db) === null;
-      this.writeProfile(p);
+      this.writeProfile(profile);
       return { created, profile: readProfile(this.db) as Profile };
     });
   }
@@ -88,67 +104,63 @@ export class Library {
     return transaction(this.db, () => {
       const current = readProfile(this.db);
       if (!current) throw new ServiceError('PROFILE_REQUIRED', 'Set your name in the profile before editing it');
-      const p = build(patch, PROFILE_RULES, 'profile', { ...current });
-      this.writeProfile(p);
+      this.writeProfile(patchedProfile(current, patch));
       return readProfile(this.db) as Profile;
     });
   }
 
-  private writeProfile(p: Record<string, unknown>): void {
+  private writeProfile(p: Profile): void {
     this.db
       .prepare(
         `INSERT INTO profile (id, name, label, email, phone, url, education_json) VALUES (1, ?, ?, ?, ?, ?, ?)
          ON CONFLICT (id) DO UPDATE SET name = excluded.name, label = excluded.label, email = excluded.email,
            phone = excluded.phone, url = excluded.url, education_json = excluded.education_json`,
       )
-      .run(
-        p.name as string,
-        nullable(p.label),
-        nullable(p.email),
-        nullable(p.phone),
-        nullable(p.url),
-        JSON.stringify(p.education ?? []),
-      );
+      .run(p.name, nullable(p.label), nullable(p.email), nullable(p.phone), nullable(p.url), JSON.stringify(p.education));
   }
 
   // ---- Entries: experiences (work) and projects ----------------------------
 
   getEntry(kind: EntryKind, id: string): Entry {
-    const row = this.db.prepare('SELECT * FROM entries WHERE id = ? AND kind = ?').get(id, kind);
-    if (!row) throw notFound(`${kind === 'work' ? 'experience' : 'project'} ${id} does not exist`);
-    return rowToEntry(row as Record<string, string>);
+    const e = this.snapshot().entries.get(id);
+    if (!e || e.kind !== kind) throw notFound(`${kind === 'work' ? 'experience' : 'project'} ${id} does not exist`);
+    return e;
   }
 
-  createEntry(kind: EntryKind, body: unknown, opts?: CreateOptions): Entry {
-    const rules = kind === 'work' ? WORK_RULES : PROJECT_RULES;
-    const e = build(body, rules, kind === 'work' ? 'experience' : 'project');
-    checkDates(e);
-    return transaction(this.db, () => {
-      const id = this.newId(opts, 'entries');
+  listEntries(kind: EntryKind): Entry[] {
+    return [...this.snapshot().entries.values()].filter((e) => e.kind === kind);
+  }
+
+  private writeEntry(e: Entry, insert: boolean): void {
+    const values = [e.name, nullable(e.position), nullable(e.location), nullable(e.url), nullable(e.startDate), nullable(e.endDate)];
+    if (insert) {
       this.db
         .prepare(
-          `INSERT INTO entries (id, kind, name, role_title, location, url, start_date, end_date)
+          `INSERT INTO entries (name, role_title, location, url, start_date, end_date, id, kind)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
         )
-        .run(id, kind, e.name as string, nullable(e.position), nullable(e.location), nullable(e.url),
-          nullable(e.startDate), nullable(e.endDate));
-      return this.getEntry(kind, id);
-    });
-  }
-
-  patchEntry(kind: EntryKind, id: string, patch: unknown): Entry {
-    return transaction(this.db, () => {
-      const { id: _id, kind: _kind, ...current } = this.getEntry(kind, id);
-      const rules = kind === 'work' ? WORK_RULES : PROJECT_RULES;
-      const e = build(patch, rules, kind === 'work' ? 'experience' : 'project', current);
-      checkDates(e);
+        .run(...values, e.id, e.kind);
+    } else {
       this.db
         .prepare(
           `UPDATE entries SET name = ?, role_title = ?, location = ?, url = ?, start_date = ?, end_date = ?
            WHERE id = ? AND kind = ?`,
         )
-        .run(e.name as string, nullable(e.position), nullable(e.location), nullable(e.url),
-          nullable(e.startDate), nullable(e.endDate), id, kind);
+        .run(...values, e.id, e.kind);
+    }
+  }
+
+  createEntry(kind: EntryKind, body: unknown, opts?: CreateOptions): Entry {
+    return transaction(this.db, () => {
+      const entry = newEntry(kind, this.newId(opts, 'entries'), body);
+      this.writeEntry(entry, true);
+      return this.getEntry(kind, entry.id);
+    });
+  }
+
+  patchEntry(kind: EntryKind, id: string, patch: unknown): Entry {
+    return transaction(this.db, () => {
+      this.writeEntry(patchedEntry(this.getEntry(kind, id), patch), false);
       return this.getEntry(kind, id);
     });
   }
@@ -156,14 +168,13 @@ export class Library {
   // ---- Accomplishments and wording variants ---------------------------------
 
   createAccomplishment(kind: EntryKind, entryId: string, body: unknown, opts?: CreateOptions): Accomplishment {
-    const a = build(body, ACCOMPLISHMENT_RULES, 'accomplishment');
     return transaction(this.db, () => {
       this.getEntry(kind, entryId);
-      const id = this.newId(opts, 'accomplishments');
+      const a = newAccomplishment(this.newId(opts, 'accomplishments'), entryId, body);
       this.db
         .prepare('INSERT INTO accomplishments (id, entry_id, fact, tags_json) VALUES (?, ?, ?, ?)')
-        .run(id, entryId, a.fact as string, JSON.stringify(a.tags ?? []));
-      return this.getAccomplishment(id);
+        .run(a.id, a.entryId, a.fact, JSON.stringify(a.tags));
+      return this.getAccomplishment(a.id);
     });
   }
 
@@ -175,24 +186,18 @@ export class Library {
 
   patchAccomplishment(id: string, patch: unknown): Accomplishment {
     return transaction(this.db, () => {
-      const { id: _id, entryId: _entryId, ...current } = this.getAccomplishment(id);
-      const a = build(patch, ACCOMPLISHMENT_RULES, 'accomplishment', current);
-      this.db
-        .prepare('UPDATE accomplishments SET fact = ?, tags_json = ? WHERE id = ?')
-        .run(a.fact as string, JSON.stringify(a.tags ?? []), id);
+      const a = patchedAccomplishment(this.getAccomplishment(id), patch);
+      this.db.prepare('UPDATE accomplishments SET fact = ?, tags_json = ? WHERE id = ?').run(a.fact, JSON.stringify(a.tags), id);
       return this.getAccomplishment(id);
     });
   }
 
   createVariant(accomplishmentId: string, body: unknown, opts?: CreateOptions): Variant {
-    const v = build(body, VARIANT_RULES, 'variant');
     return transaction(this.db, () => {
       this.getAccomplishment(accomplishmentId);
-      const id = this.newId(opts, 'variants');
-      this.db
-        .prepare('INSERT INTO variants (id, accomplishment_id, text) VALUES (?, ?, ?)')
-        .run(id, accomplishmentId, v.text as string);
-      return this.getVariant(id);
+      const v = newVariant(this.newId(opts, 'variants'), accomplishmentId, body);
+      this.db.prepare('INSERT INTO variants (id, accomplishment_id, text) VALUES (?, ?, ?)').run(v.id, v.accomplishmentId, v.text);
+      return this.getVariant(v.id);
     });
   }
 
@@ -204,23 +209,25 @@ export class Library {
 
   patchVariant(id: string, patch: unknown): Variant {
     return transaction(this.db, () => {
-      const { id: _id, accomplishmentId: _parent, ...current } = this.getVariant(id);
-      const v = build(patch, VARIANT_RULES, 'variant', current);
-      this.db.prepare('UPDATE variants SET text = ? WHERE id = ?').run(v.text as string, id);
+      const v = patchedVariant(this.getVariant(id), patch);
+      this.db.prepare('UPDATE variants SET text = ? WHERE id = ?').run(v.text, id);
       return this.getVariant(id);
     });
   }
 
   // ---- Skills ----------------------------------------------------------------
 
+  listSkills(): Skill[] {
+    return [...this.snapshot().skills.values()];
+  }
+
   createSkill(body: unknown, opts?: CreateOptions): Skill {
-    const s = build(body, SKILL_RULES, 'skill');
     return transaction(this.db, () => {
-      const id = this.newId(opts, 'skills');
+      const s = newSkill(this.newId(opts, 'skills'), body);
       this.db
         .prepare('INSERT INTO skills (id, name, level, keywords_json) VALUES (?, ?, ?, ?)')
-        .run(id, s.name as string, nullable(s.level), JSON.stringify(s.keywords ?? []));
-      return this.getSkill(id);
+        .run(s.id, s.name, nullable(s.level), JSON.stringify(s.keywords));
+      return this.getSkill(s.id);
     });
   }
 
@@ -232,11 +239,10 @@ export class Library {
 
   patchSkill(id: string, patch: unknown): Skill {
     return transaction(this.db, () => {
-      const { id: _id, ...current } = this.getSkill(id);
-      const s = build(patch, SKILL_RULES, 'skill', current);
+      const s = patchedSkill(this.getSkill(id), patch);
       this.db
         .prepare('UPDATE skills SET name = ?, level = ?, keywords_json = ? WHERE id = ?')
-        .run(s.name as string, nullable(s.level), JSON.stringify(s.keywords ?? []), id);
+        .run(s.name, nullable(s.level), JSON.stringify(s.keywords), id);
       return this.getSkill(id);
     });
   }
@@ -245,7 +251,7 @@ export class Library {
 
   /** Impact of deleting a record (FR-04, delete form); NOT_FOUND if it does not exist. */
   deleteImpact(type: DeletableType, id: string): Impact {
-    return deleteImpact(this.snapshot(), { op: 'delete', type, id });
+    return impactOf(this.snapshot(), { op: 'delete', type, id });
   }
 
   /**
@@ -255,7 +261,7 @@ export class Library {
    */
   deleteRecord(type: DeletableType, id: string): void {
     transaction(this.db, () => {
-      const impact = deleteImpact(this.snapshot(), { op: 'delete', type, id });
+      const impact = impactOf(this.snapshot(), { op: 'delete', type, id });
       if (impact.blocked) throw recordInUse(impact);
       const table =
         type === 'variant' ? 'variants' : type === 'accomplishment' ? 'accomplishments' : type === 'skill' ? 'skills' : 'entries';
@@ -272,10 +278,13 @@ export class Library {
   }
 
   createResume(body: unknown, opts?: CreateOptions): ResumeConfiguration {
-    const r = build(body, { name: { required: true, check: plainText } }, 'resume');
+    if (body === null || typeof body !== 'object' || Array.isArray(body)) throw invalidInput('resume must be an object');
+    const { name, ...rest } = body as Record<string, unknown>;
+    if (Object.keys(rest).length > 0) throw invalidInput(`resume: unknown field "${Object.keys(rest)[0]}"`);
+    const resumeName = plainText(name, 'resume.name');
     return transaction(this.db, () => {
       const id = this.newId(opts, 'resumes');
-      this.db.prepare('INSERT INTO resumes (id, name) VALUES (?, ?)').run(id, r.name as string);
+      this.db.prepare('INSERT INTO resumes (id, name) VALUES (?, ?)').run(id, resumeName);
       return this.getResume(id);
     });
   }

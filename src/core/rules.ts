@@ -3,8 +3,8 @@
 // Patch: an omitted key leaves the field unchanged, `null` clears an optional
 // field, and a required field can never be cleared. Unknown keys are rejected.
 
-import { invalidInput } from '../core/errors.ts';
-import { date, dateOrder, email, onlyKeys, plainText, stringList, text, url } from '../core/fields.ts';
+import { invalidInput } from './errors.ts';
+import { date, dateOrder, email, onlyKeys, plainText, stringList, text, url } from './fields.ts';
 
 export interface FieldRule {
   required?: boolean;
