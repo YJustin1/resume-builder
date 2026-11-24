@@ -19,7 +19,7 @@ export class PathError extends Error {
 
 const canonical = (path: string) => realpathSync.native(path);
 
-function lstatOrNull(path: string) {
+export function lstatOrNull(path: string) {
   try {
     return lstatSync(path);
   } catch (error) {

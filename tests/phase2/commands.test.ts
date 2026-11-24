@@ -290,19 +290,16 @@ describe('demo lock (review round 2)', () => {
     expect(seed(root).status).toBe(2);
   });
 
-  it('a sidecar that SQLite does not consume after recovery refuses the reset and preserves the old database', () => {
-    const root = makeRoot();
-    expect(seed(root).status).toBe(0);
-    const demoFile = join(root, '.demo', 'demo.sqlite');
-    const before = bytes(demoFile);
-    // SQLite itself removes a stray -wal or -journal on open; a stray -shm survives.
-    writeFileSync(`${demoFile}-shm`, 'stray');
-    const run = seed(root);
-    expect(run.status).toBe(2);
-    expect(run.stderr).toMatch(/sidecar files remain after recovery/);
-    expect(bytes(demoFile)).toBe(before);
-    expect(readFileSync(`${demoFile}-shm`, 'utf8')).toBe('stray');
-  });
+  it('two concurrent --reset seeds: exactly one publishes, the other refuses', async () => {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const root = makeRoot();
+      expect(seed(root).status).toBe(0);
+      const runs = await Promise.all([seedAsync(root, ['--reset']), seedAsync(root, ['--reset'])]);
+      expect(runs.map((r) => r.code).sort(), runs.map((r) => r.err).join(' | ')).toEqual([0, 2]);
+      const loser = runs.find((r) => r.code === 2)!;
+      expect(loser.err).toMatch(/published while this one waited|in use by another demo server or seed/);
+    }
+  }, 120_000);
 });
 
 describe('personal mode tolerates a broken demo location (review round 2)', () => {
@@ -323,4 +320,55 @@ describe('personal mode tolerates a broken demo location (review round 2)', () =
     const again = await start(baseEnv(root));
     await again.stop();
   }, 30_000);
+});
+
+describe('interrupted writes: refuse and touch nothing (owner decision)', () => {
+  /** Crash a writer mid-transaction after SQLite has spilled pages into the file: a genuine hot journal. */
+  function crashWriter(file: string) {
+    spawnSync(process.execPath, [
+      '-e',
+      `const {DatabaseSync}=require('node:sqlite');const d=new DatabaseSync(process.argv[1]);
+       d.exec('PRAGMA cache_size = 2');d.exec('BEGIN');d.exec('CREATE TABLE junk(x)');
+       d.exec('WITH RECURSIVE c(i) AS (SELECT 1 UNION ALL SELECT i+1 FROM c WHERE i<3000) INSERT INTO junk SELECT randomblob(800) FROM c');
+       process.kill(process.pid,'SIGKILL');`,
+      file,
+    ]);
+  }
+
+  it('a genuine hot journal: reset refused with instructions, bytes untouched; after `demo` recovers it, reset works', async () => {
+    const root = makeRoot();
+    expect(seed(root).status).toBe(0);
+    const demoFile = join(root, '.demo', 'demo.sqlite');
+    const original = bytes(demoFile);
+    crashWriter(demoFile);
+    expect(existsSync(`${demoFile}-journal`)).toBe(true);
+    const crashed = bytes(demoFile);
+    expect(crashed).not.toBe(original); // pages really were written: the journal is hot
+    const run = seed(root);
+    expect(run.status).toBe(2);
+    expect(run.stderr).toMatch(/recovery files left by an interrupted write .* run `npm run demo` once/);
+    expect(bytes(demoFile)).toBe(crashed);
+    expect(existsSync(`${demoFile}-journal`)).toBe(true);
+    const demo = await start(baseEnv(root), ['--demo']); // SQLite rolls the journal back on open
+    await demo.stop();
+    expect(existsSync(`${demoFile}-journal`)).toBe(false);
+    expect(bytes(demoFile)).toBe(original);
+    expect(seed(root).status).toBe(0);
+  }, 60_000);
+
+  it('orphaned sidecars with no database (including a dangling symlink) refuse a first seed; nothing is published', () => {
+    for (const make of [
+      (f: string) => writeFileSync(`${f}-wal`, 'orphan'),
+      (f: string) => symlinkSync(join(tempDir(), 'gone'), `${f}-shm`),
+    ]) {
+      const root = makeRoot();
+      mkdirSync(join(root, '.demo'));
+      const demoFile = join(root, '.demo', 'demo.sqlite');
+      make(demoFile);
+      const run = seed(root);
+      expect(run.status).toBe(2);
+      expect(run.stderr).toMatch(/recovery files/);
+      expect(existsSync(demoFile)).toBe(false);
+    }
+  });
 });

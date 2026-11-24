@@ -3,23 +3,23 @@
 // ignores DB_PATH, and refuses to overwrite without --reset.
 //
 // The whole run holds the demo lock (refused while a demo server or another
-// seed holds it). The new database is built completely in a temporary file
-// inside `.demo/` (one transaction for all fixtures). Before publishing, the
-// old database is opened through SQLite so any hot journal from an abnormal
-// shutdown is rolled back by SQLite itself (sidecars are never deleted by
-// hand); if a sidecar still remains, the reset is refused. The final step is
-// an atomic rename over `demo.sqlite`: any failure before it leaves the old
-// database untouched, and nothing after it can turn the run into a refusal.
+// seed holds it). A seed that had to wait for the lock re-checks the demo
+// file's identity and refuses if another seed published meanwhile. The old
+// database is never opened or modified: if any SQLite sidecar file exists
+// (left by an interrupted write), the reset is refused with instructions, so a
+// refused reset always leaves the old database byte-identical. The new
+// database is built completely in a temporary file inside `.demo/` (one
+// transaction for all fixtures); the final step is an atomic rename over
+// `demo.sqlite`, and nothing after it can turn the run into a refusal.
 
 import { existsSync, readFileSync, renameSync, rmSync } from 'node:fs';
-import { DatabaseSync } from 'node:sqlite';
 import { dirname, join } from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
 import { openDatabase, transaction } from '../db/database.ts';
 import { Library } from '../db/library.ts';
 import { loadFixture } from '../db/seed.ts';
 import { acquireDemoLock } from './demo-lock.ts';
-import { PathError, prepareDemoDbPath, REPO_ROOT } from './paths.ts';
+import { lstatOrNull, PathError, prepareDemoDbPath, REPO_ROOT } from './paths.ts';
 
 const args = process.argv.slice(2);
 const reset = args.includes('--reset');
@@ -27,12 +27,34 @@ const withSections = args.includes('--with-sections');
 const fixture = (name: string) =>
   JSON.parse(readFileSync(join(REPO_ROOT, 'fixtures', name), 'utf8')) as Record<string, unknown>;
 
+/** The demo file's identity (inode, mtime, size), or "absent". */
+const identity = (file: string) => {
+  const st = lstatOrNull(file);
+  return st ? `${st.ino}:${st.mtimeMs}:${st.size}` : 'absent';
+};
+
+/** Refuse if SQLite recovery/sidecar files exist (lstat: dangling symlinks count). */
+function refuseIfSidecars(file: string): void {
+  const found = ['-journal', '-wal', '-shm'].map((s) => file + s).filter((p) => lstatOrNull(p) !== null);
+  if (found.length > 0) {
+    throw new PathError(
+      `the demo database has SQLite recovery files left by an interrupted write (${found.join(', ')}); ` +
+        'run `npm run demo` once so SQLite recovers it, or delete the .demo/ directory, then retry',
+    );
+  }
+}
+
 let temp: string | undefined;
 let releaseLock: (() => void) | undefined;
 try {
   const file = prepareDemoDbPath(REPO_ROOT);
+  const seen = identity(file);
   releaseLock = acquireDemoLock(dirname(file), 'seed');
+  if (identity(file) !== seen) {
+    throw new PathError('another demo seed published while this one waited for the lock; nothing was changed');
+  }
   if (existsSync(file) && !reset) throw new PathError(`${file} already exists; pass --reset to replace it`);
+  refuseIfSidecars(file);
 
   const primary = fixture('primary.input.json');
   const overflow = fixture('overflow.input.json');
@@ -61,19 +83,7 @@ try {
   } finally {
     db.close();
   }
-  if (existsSync(file)) {
-    // Let SQLite recover the old database (rolls back a hot journal), so no
-    // recovery data is lost, and make sure no sidecar could be applied to the
-    // replacement after the rename.
-    const old = new DatabaseSync(file, { timeout: 0 });
-    try {
-      old.prepare('PRAGMA quick_check').get();
-    } finally {
-      old.close();
-    }
-    const leftover = ['-journal', '-wal', '-shm'].map((s) => file + s).filter((p) => existsSync(p));
-    if (leftover.length > 0) throw new PathError(`old database sidecar files remain after recovery: ${leftover.join(', ')}`);
-  }
+  refuseIfSidecars(file); // again, immediately before publishing
   renameSync(temp, file); // the commit point: atomic replacement on the same filesystem
   temp = undefined;
   process.stdout.write(`demo database ready: ${file} (resumes: ${names.join(', ')})\n`);
