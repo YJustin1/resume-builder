@@ -10,10 +10,15 @@
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",
     "test": "vitest run",
-    "check": "npm run typecheck && npm run test"
+    "check": "npm run typecheck && npm run test",
+    "api": "node src/server/main.ts",
+    "demo:seed": "node src/server/demo-seed.ts",
+    "demo": "node src/server/main.ts --demo"
   },
   "dependencies": {
+    "@hono/node-server": "2.1.11",
     "@jsonresume/schema": "1.11.0",
+    "hono": "4.13.21",
     "jsonresume-theme-even": "0.27.0",
     "pdfjs-dist": "6.5.438",
     "puppeteer": "25.18.1",
