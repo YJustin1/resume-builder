@@ -57,11 +57,21 @@ export function text(value: unknown, field: string): string {
 }
 
 function validates(doc: unknown): boolean {
-  let ok = false;
-  schema.validate(doc, (_err, valid) => {
-    ok = valid;
+  return validateResumeDocument(doc).length === 0;
+}
+
+/** Validate a whole JSON Resume document with the pinned validator; returns error messages. */
+export function validateResumeDocument(doc: unknown): string[] {
+  let messages: string[] = [];
+  schema.validate(doc, (err, valid) => {
+    if (valid) return;
+    const list = Array.isArray(err) ? err : [err];
+    messages = list.map((e) => {
+      const r = e as { property?: string; message?: string };
+      return `${r.property ?? 'resume'} ${r.message ?? String(e)}`.trim();
+    });
   });
-  return ok;
+  return messages;
 }
 
 export function date(value: unknown, field: string): string {
