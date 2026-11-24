@@ -19,11 +19,9 @@ const themeRequire = createRequire(require.resolve('jsonresume-theme-even'));
 const micromark = themeRequire('micromark') as (markdown: string) => string;
 
 const ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/;
-// eslint-disable-next-line no-control-regex
-const CONTROL = /[\u0000-\u001F\u007F]/;
-// Pinned schema iso8601 pattern (packages/schema/schema.json, definitions.iso8601).
-const ISO8601 =
-  /^([1-2][0-9]{3}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])|[1-2][0-9]{3}-(0[1-9]|1[0-2])|[1-2][0-9]{3})$/;
+// Unicode control characters (C0, DEL, C1 including U+0085) and the line and
+// paragraph separators U+2028/U+2029: none may appear in a single-line field.
+const CONTROL = /[\p{Cc}\u2028\u2029]/u;
 
 export function id(value: unknown, field: string): string {
   if (typeof value !== 'string' || !ID.test(value)) throw invalidInput(`${field} must be a valid ID`);
@@ -36,16 +34,26 @@ export function rendersImage(text: string): boolean {
 }
 
 /**
- * A required single-line plain-text field: trimmed, nonempty, no control
- * characters, and no Markdown that renders an image.
+ * A single-line plain-text field: trimmed, nonempty, no control characters or
+ * line/paragraph separators. Used for internal fields (facts, tags, resume
+ * names) that are never exported.
  */
-export function text(value: unknown, field: string): string {
+export function plainText(value: unknown, field: string): string {
   if (typeof value !== 'string') throw invalidInput(`${field} must be a string`);
   const trimmed = value.trim();
   if (trimmed === '') throw invalidInput(`${field} must not be empty`);
   if (CONTROL.test(trimmed)) throw invalidInput(`${field} must be a single line without control characters`);
-  if (rendersImage(trimmed)) throw invalidInput(`${field} must not contain Markdown that renders an image`);
   return trimmed;
+}
+
+/**
+ * An exported text field (SPEC §3.5 rule 1): plain-text rules plus no
+ * Markdown that renders an image through the theme's parser.
+ */
+export function text(value: unknown, field: string): string {
+  const s = plainText(value, field);
+  if (rendersImage(s)) throw invalidInput(`${field} must not contain Markdown that renders an image`);
+  return s;
 }
 
 function validates(doc: unknown): boolean {
@@ -57,8 +65,12 @@ function validates(doc: unknown): boolean {
 }
 
 export function date(value: unknown, field: string): string {
-  const s = text(value, field);
-  if (!ISO8601.test(s)) throw invalidInput(`${field} must be YYYY, YYYY-MM or YYYY-MM-DD (years 1000-2999)`);
+  const s = plainText(value, field);
+  // The pinned validator decides the format (its iso8601 definition), so write
+  // and export rules cannot drift; the calendar check below is ours.
+  if (!validates({ basics: { name: 'x' }, work: [{ name: 'x', startDate: s }] })) {
+    throw invalidInput(`${field} must be YYYY, YYYY-MM or YYYY-MM-DD (years 1000-2999)`);
+  }
   const [y, m, d] = s.split('-').map(Number);
   if (y !== undefined && m !== undefined && d !== undefined) {
     const probe = new Date(Date.UTC(y, m - 1, d));
@@ -77,23 +89,25 @@ export function dateOrder(start: string | undefined, end: string | undefined): v
 }
 
 export function email(value: unknown, field: string): string {
-  const s = text(value, field);
+  const s = plainText(value, field);
   if (!validates({ basics: { name: 'x', email: s } })) throw invalidInput(`${field} is not a valid email address`);
   return s;
 }
 
 export function url(value: unknown, field: string): string {
-  const s = text(value, field);
+  const s = plainText(value, field);
   if (!validates({ basics: { name: 'x', url: s } })) throw invalidInput(`${field} is not a valid URI`);
   const scheme = s.slice(0, s.indexOf(':')).toLowerCase();
   if (scheme !== 'http' && scheme !== 'https') throw invalidInput(`${field} must use http or https`);
   return s;
 }
 
-/** An ordered list of nonempty single-line strings (tags, keywords). */
-export function stringList(value: unknown, field: string): string[] {
-  if (!Array.isArray(value)) throw invalidInput(`${field} must be an array of strings`);
-  return value.map((item, i) => text(item, `${field}[${i}]`));
+/** An ordered list of nonempty single-line strings, each checked by `item`. */
+export function stringList(item: (value: unknown, field: string) => string) {
+  return (value: unknown, field: string): string[] => {
+    if (!Array.isArray(value)) throw invalidInput(`${field} must be an array of strings`);
+    return value.map((v, i) => item(v, `${field}[${i}]`));
+  };
 }
 
 /** Reject keys outside the allowed set (no silent ignoring of typos). */

@@ -16,9 +16,9 @@ export function readFixture<T = any>(name: string): T {
   return JSON.parse(readFileSync(new URL(name, FIXTURES), 'utf8')) as T;
 }
 
-/** A fresh, isolated in-memory database, optionally seeded from a fixture input. */
-export function freshLibrary(input?: string): Library {
-  const lib = new Library(openDatabase(':memory:'));
+/** A fresh, isolated database (in memory by default), optionally seeded from a fixture input. */
+export function freshLibrary(input?: string, path = ':memory:'): Library {
+  const lib = new Library(openDatabase(path));
   if (input) loadFixture(lib, readFixture(input));
   return lib;
 }

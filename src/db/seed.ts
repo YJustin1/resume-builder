@@ -3,8 +3,8 @@
 // the same validation as user writes. The whole load is one transaction: an
 // invalid fixture fails loudly and leaves the database unchanged.
 
-import { invalidInput } from '../core/errors.ts';
-import { onlyKeys } from '../core/fields.ts';
+import { invalidInput, ServiceError } from '../core/errors.ts';
+import { id as checkId, onlyKeys } from '../core/fields.ts';
 import { transaction } from './database.ts';
 import type { Library } from './library.ts';
 
@@ -25,6 +25,23 @@ export function loadFixture(lib: Library, input: unknown): void {
   transaction(lib.db, () => load(lib, input));
 }
 
+/** Run one fixture item, labelling any failure with its fixture path. */
+function at<T>(path: string, fn: () => T): T {
+  try {
+    return fn();
+  } catch (error) {
+    if (error instanceof ServiceError) throw new ServiceError(error.code, `${path}: ${error.message}`);
+    throw error;
+  }
+}
+
+/** Fixture records must carry a fixed, valid ID (fixtures/README.md). */
+function fixtureId(raw: Obj, path: string): string {
+  if (raw === null || typeof raw !== 'object' || Array.isArray(raw)) throw invalidInput(`${path} must be an object`);
+  if (raw.id === undefined) throw invalidInput(`${path}.id is required in fixtures`);
+  return checkId(raw.id, `${path}.id`);
+}
+
 function load(lib: Library, input: unknown): void {
   const root = onlyKeys(
     input,
@@ -37,36 +54,49 @@ function load(lib: Library, input: unknown): void {
     if (legacySkills !== undefined && !(Array.isArray(legacySkills) && legacySkills.length === 0)) {
       throw invalidInput('profile.skills is a legacy key and must be [] (skills live in the top-level library)');
     }
-    lib.putProfile(profile);
+    at('profile', () => lib.putProfile(profile));
   }
 
-  for (const raw of list(root.experiences, 'experiences')) {
-    const [id, body] = split(raw, 'id');
-    lib.createEntry('work', body, { id: id as string });
-  }
-  for (const raw of list(root.projects, 'projects')) {
-    const [id, body] = split(raw, 'id');
-    lib.createEntry('project', body, { id: id as string });
-  }
-  for (const raw of list(root.skills, 'skills')) {
-    const [id, body] = split(raw, 'id');
-    lib.createSkill(body, { id: id as string });
-  }
-  for (const raw of list(root.accomplishments, 'accomplishments')) {
-    const { id, experienceId, projectId, ...body } = raw;
+  list(root.experiences, 'experiences').forEach((raw, i) => {
+    const path = `experiences[${i}]`;
+    const id = fixtureId(raw, path);
+    at(path, () => lib.createEntry('work', split(raw, 'id')[1], { id }));
+  });
+  list(root.projects, 'projects').forEach((raw, i) => {
+    const path = `projects[${i}]`;
+    const id = fixtureId(raw, path);
+    at(path, () => lib.createEntry('project', split(raw, 'id')[1], { id }));
+  });
+  list(root.skills, 'skills').forEach((raw, i) => {
+    const path = `skills[${i}]`;
+    const id = fixtureId(raw, path);
+    at(path, () => lib.createSkill(split(raw, 'id')[1], { id }));
+  });
+  list(root.accomplishments, 'accomplishments').forEach((raw, i) => {
+    const path = `accomplishments[${i}]`;
+    const id = fixtureId(raw, path);
+    const { id: _id, experienceId, projectId, ...body } = raw;
     if ((experienceId === undefined) === (projectId === undefined)) {
-      throw invalidInput(`accomplishment ${String(id)} needs exactly one of experienceId or projectId`);
+      throw invalidInput(`${path} needs exactly one of experienceId or projectId`);
     }
-    const [kind, parent] = experienceId !== undefined ? (['work', experienceId] as const) : (['project', projectId] as const);
-    lib.createAccomplishment(kind, parent as string, body, { id: id as string });
-  }
-  for (const raw of list(root.variants, 'variants')) {
-    const { id, accomplishmentId, ...body } = raw;
-    lib.createVariant(accomplishmentId as string, body, { id: id as string });
-  }
-  for (const raw of list(root.resumes, 'resumes')) {
-    const { id, ...config } = raw;
-    lib.createResume({ name: config.name }, { id: id as string });
-    lib.saveResume(id as string, config);
-  }
+    const kind = experienceId !== undefined ? 'work' : 'project';
+    const parent = checkId(experienceId ?? projectId, `${path}.${kind === 'work' ? 'experienceId' : 'projectId'}`);
+    at(path, () => lib.createAccomplishment(kind, parent, body, { id }));
+  });
+  list(root.variants, 'variants').forEach((raw, i) => {
+    const path = `variants[${i}]`;
+    const id = fixtureId(raw, path);
+    const { id: _id, accomplishmentId, ...body } = raw;
+    const parent = checkId(accomplishmentId, `${path}.accomplishmentId`);
+    at(path, () => lib.createVariant(parent, body, { id }));
+  });
+  list(root.resumes, 'resumes').forEach((raw, i) => {
+    const path = `resumes[${i}]`;
+    const id = fixtureId(raw, path);
+    const { id: _id, ...config } = raw;
+    at(path, () => {
+      lib.createResume({ name: config.name }, { id });
+      lib.saveResume(id, config);
+    });
+  });
 }

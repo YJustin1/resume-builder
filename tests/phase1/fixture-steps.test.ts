@@ -36,6 +36,16 @@ for (const [file, include] of FILES) {
           if (step.code) expect(result.code, where).toBe(step.code);
           if (step.affectedResumes) expect(result.affectedResumes, where).toEqual(step.affectedResumes);
           if (step.status >= 400) expect(dumpRows(lib.db), `${where} must change nothing`).toEqual(before);
+          if (step.action === 'delete' && step.status === 204) {
+            // A successful delete must actually remove the record. Variants and
+            // skills have no children, so every other row must be unchanged.
+            expect(recordExists(lib, step.id), `${where} removed ${step.id}`).toBe(false);
+            if (step.type === 'variant' || step.type === 'skill') {
+              const table = step.type === 'variant' ? 'variants' : 'skills';
+              const expected = { ...before, [table]: before[table]!.filter((r: any) => r.id !== step.id) };
+              expect(dumpRows(lib.db), `${where} removes only ${step.id}`).toEqual(expected);
+            }
+          }
           if (step.expectedBody) expect(result.body, where).toEqual(step.expectedBody);
         });
         for (const id of c.recordsAbsent ?? []) expect(recordExists(lib, id), id).toBe(false);

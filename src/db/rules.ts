@@ -4,7 +4,7 @@
 // field, and a required field can never be cleared. Unknown keys are rejected.
 
 import { invalidInput } from '../core/errors.ts';
-import { date, dateOrder, email, onlyKeys, stringList, text, url } from '../core/fields.ts';
+import { date, dateOrder, email, onlyKeys, plainText, stringList, text, url } from '../core/fields.ts';
 
 export interface FieldRule {
   required?: boolean;
@@ -69,9 +69,10 @@ export const PROJECT_RULES: Rules = {
   endDate: dateRule,
 };
 
+// Facts and tags are internal (never exported): plain-text rules only.
 export const ACCOMPLISHMENT_RULES: Rules = {
-  fact: textRule(true),
-  tags: { check: stringList },
+  fact: { required: true, check: plainText },
+  tags: { check: stringList(plainText) },
 };
 
 export const VARIANT_RULES: Rules = { text: textRule(true) };
@@ -79,7 +80,7 @@ export const VARIANT_RULES: Rules = { text: textRule(true) };
 export const SKILL_RULES: Rules = {
   name: textRule(true),
   level: textRule(),
-  keywords: { check: stringList },
+  keywords: { check: stringList(text) },
 };
 
 const EDUCATION_RULES: Rules = {

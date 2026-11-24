@@ -5,7 +5,7 @@
 import { randomUUID } from 'node:crypto';
 import { validateConfiguration } from '../core/configuration.ts';
 import { invalidInput, notFound, ServiceError } from '../core/errors.ts';
-import { id as checkId, text } from '../core/fields.ts';
+import { id as checkId, plainText } from '../core/fields.ts';
 import { deleteImpact, recordInUse, type DeletableType, type Impact } from '../core/impact.ts';
 import type {
   Accomplishment,
@@ -45,8 +45,19 @@ export class Library {
     this.db = db;
   }
 
+  /**
+   * A consistent read of the whole database (SPEC §3.1). Inside a write
+   * transaction it reuses that transaction; otherwise all queries run in one
+   * read transaction, so another connection's commit cannot land between them.
+   */
   snapshot(): Snapshot {
-    return readSnapshot(this.db);
+    if (this.db.isTransaction) return readSnapshot(this.db);
+    this.db.exec('BEGIN');
+    try {
+      return readSnapshot(this.db);
+    } finally {
+      this.db.exec('COMMIT');
+    }
   }
 
   private newId(opts: CreateOptions | undefined, table: string): string {
@@ -261,7 +272,7 @@ export class Library {
   }
 
   createResume(body: unknown, opts?: CreateOptions): ResumeConfiguration {
-    const r = build(body, { name: { required: true, check: text } }, 'resume');
+    const r = build(body, { name: { required: true, check: plainText } }, 'resume');
     return transaction(this.db, () => {
       const id = this.newId(opts, 'resumes');
       this.db.prepare('INSERT INTO resumes (id, name) VALUES (?, ?)').run(id, r.name as string);

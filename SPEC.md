@@ -153,7 +153,7 @@ The rules below are based on this behaviour of the pinned renderer, verified in 
 
      A violation returns `409 CONTENT_POLICY_VIOLATION`, naming the element, and **the printer is never invoked**. This guards against stored data that bypassed write validation (e.g. older rows or direct SQL).
    - Theme assets (web fonts) are the only network loads.
-2. **URL fields** (`basics.url`; work, project and education `url`) must pass the schema `uri` format **and** use the `http:` or `https:` scheme; anything else is `400 INVALID_INPUT`.
+2. **URL fields** (`basics.url`; work and project `url`; education items have no URL in the MVP, by owner decision) must pass the schema `uri` format **and** use the `http:` or `https:` scheme; anything else is `400 INVALID_INPUT`.
 3. **Links inside text.** Inline Markdown links are allowed (schema #600). Only `http:`, `https:` and `mailto:` targets may appear as non-empty `href` values in the printed HTML. Other schemes must be neutralized; the renderer does this, and a test asserts it.
 4. **Preview isolation.** The preview is served in an `<iframe sandbox>` with neither `allow-scripts` nor `allow-same-origin`, and the preview response carries `Content-Security-Policy: default-src 'none'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data:`.
 
@@ -186,7 +186,7 @@ docs/          # decisions, agent log, debugging story
 - Text fields are single-line plain strings, stored and exported exactly as entered (after trimming). The theme may interpret inline Markdown (D9).
 - **Schema formats on write:** fields the pinned schema constrains are checked on write, on configuration save and on impact proposals, using the pinned validator itself so the rules cannot diverge. Validate a minimal document containing only the candidate value. Verified behaviour of `@jsonresume/schema@1.11.0`:
   - `basics.email` (`format: email`): `not-an-email` is rejected;
-  - `basics.url` and work, project and education `url` (`format: uri`): `not a url` and `example.com` are rejected, because a scheme is required; `https://example.com/x` is accepted;
+  - `basics.url` and work and project `url` (`format: uri`): `not a url` and `example.com` are rejected, because a scheme is required; `https://example.com/x` is accepted;
   - dates: see below.
 
   A failing value is `400 INVALID_INPUT`, and the stored record is unchanged.
@@ -406,7 +406,7 @@ Requirements:
 | `GET/POST /api/resumes`, `GET/PUT/DELETE /api/resumes/:id` | List/create (a new resume is empty); read/replace name + whole configuration; delete |
 | `GET /api/resumes/:id/export/json`, `/preview`, `/export/pdf` | JSON download, HTML preview, PDF download (with the page-count headers) |
 
-Configuration `PUT` (array order is the saved order; `projects` and `skills` default to `[]`):
+Configuration `PUT` (array order is the saved order). `name` and `experiences` are required; an explicit `[]` is allowed, and omitting `experiences` is `INVALID_INPUT`, so a partial body can never silently clear the work selections. `projects` and `skills` default to `[]`:
 
 ```json
 {
@@ -501,7 +501,7 @@ Unit and integration tests remain the correctness oracle.
   - **Joining runs:** on the same line, append a run with **no separator** when it abuts the previous one (`|x − (prevX + prevWidth)| < 1.5 pt`), and with one space otherwise. Between lines and between pages, insert one space. Concatenate the pages in order.
     - Why: with fallback fonts (offline), Chrome emits ligatures such as `fi` as separate abutting runs, and joining every run with a space produced `fi ndings` (docs/debugging.md, Phase 0). Upstream `@repo/resume-pdf` `readPdf` uses the same adjacency rule.
   - Why position order: raw content-stream order is not reading order for Even (work highlights are emitted after later sections, EVALUATION.md E6).
-- **Normalization:** apply Unicode NFKC (decomposes ligature glyphs such as `ﬁ`; an extractor artefact), collapse whitespace runs, including line and page breaks, to one space, then trim. Preserve case, words and punctuation. Document any extractor-specific artefact you strip; never strip text broadly.
+- **Normalization:** replace only the Latin ligature code points U+FB00–U+FB06 (`ﬀ ﬁ ﬂ ﬃ ﬄ ﬅ ﬆ`) with their letter sequences, an extractor artefact. No other Unicode normalization is applied, so visible digits and symbols such as `²` or `①` are preserved and compared exactly. Then collapse whitespace runs, including line and page breaks, to one space, and trim. Preserve case, words and punctuation. Document any extractor-specific artefact you strip; never strip text broadly.
 - **Assertions:**
   - `orderedBullets` and `orderedHeaders`: each string occurs exactly once, at increasing offsets.
   - `orderedSequence`: strictly increasing offsets of each string's single occurrence. This shows that each bullet sits under its own entry and that sections are in the theme's order.
@@ -538,7 +538,8 @@ Unit and integration tests remain the correctness oracle.
   2. **correct renderer input, with a test-only render adapter that inserts extra `<li>` bullets into the HTML before printing.** It is run three times, once each with `Injected novel bullet text that matches no fixture string.`, `42%.` and `Sample Candidate`. Each run is caught by the printed-bullet sequence check;
   3. correct renderer input, with a test-only adapter that inserts a novel `<p>Injected paragraph outside any list.</p>` into the HTML before printing, caught by the approved full-text check;
   4. one expected bullet dropped;
-  5. two bullets swapped.
+  5. two bullets swapped;
+  6. a visible symbol substituted by a look-alike that general Unicode normalization would fold (e.g. expected `²` printed as `2`). The full-text check must fail, which shows normalization is limited to the ligatures.
 - **Multi-column regions** (Even's skills grid) are checked by skill names only.
 - **Hard failures:** fail if extraction is unavailable, the document is empty, or the page count is invalid. Report missing, duplicated, unexpected or out-of-order text with the case ID.
 - **Overflow fixture:** assemble and export through the real pipeline. Require ≥ 2 pages, never an exact count beyond that. Check every full bullet, not just the markers.
