@@ -146,3 +146,42 @@ describe('#7 the image rule applies only to exported fields', () => {
     expect(dumpRows(lib.db)).toEqual(before);
   });
 });
+
+describe('round 2 #11 URL and email fields get the exported-text image check', () => {
+  it('a URL whose path contains image Markdown is rejected and changes nothing', () => {
+    const lib = freshLibrary('primary.input.json');
+    const before = dumpRows(lib.db);
+    const bad = 'https://example.com/![x](https://example.org/p.png)';
+    expect(runStep(lib, { action: 'editExperience', id: 'e1', patch: { url: bad } })).toEqual({ status: 400, code: 'INVALID_INPUT' });
+    expect(runStep(lib, { action: 'editProfile', patch: { url: bad } })).toEqual({ status: 400, code: 'INVALID_INPUT' });
+    expect(dumpRows(lib.db)).toEqual(before);
+  });
+});
+
+describe('round 2 #5 a malformed fixture profile is a path-specific INVALID_INPUT', () => {
+  for (const profile of [null, [], 'Sample Candidate']) {
+    it(JSON.stringify(profile), () => {
+      const lib = new Library(openDatabase(':memory:'));
+      const input = readFixture('primary.input.json');
+      input.profile = profile;
+      expect(() => loadFixture(lib, input)).toThrow(
+        expect.objectContaining({ code: 'INVALID_INPUT', message: expect.stringMatching(/^profile must be an object/) }),
+      );
+      for (const rows of Object.values(dumpRows(lib.db))) expect(rows).toEqual([]);
+    });
+  }
+});
+
+describe('round 2 #12 stored ordering gaps are visible in the snapshot', () => {
+  it('a direct-SQL gap is reported per resume and a save repairs it', () => {
+    const lib = freshLibrary('primary.input.json');
+    expect(lib.snapshot().orderingProblems).toEqual(new Map());
+    lib.db.exec("UPDATE resume_bullets SET sort_index = 7 WHERE resume_id = 'r-security' AND accomplishment_id = 'a1'");
+    const problems = lib.snapshot().orderingProblems;
+    expect([...problems.keys()]).toEqual(['r-security']);
+    expect(problems.get('r-security')).toEqual(['bullets:e1 positions are [0, 7], expected 0..1']);
+    const { id: _id, ...config } = lib.getResume('r-security');
+    lib.saveResume('r-security', config);
+    expect(lib.snapshot().orderingProblems).toEqual(new Map());
+  });
+});

@@ -50,6 +50,9 @@ function load(lib: Library, input: unknown): void {
   );
 
   if (root.profile !== undefined) {
+    if (root.profile === null || typeof root.profile !== 'object' || Array.isArray(root.profile)) {
+      throw invalidInput('profile must be an object');
+    }
     const [legacySkills, profile] = split(root.profile as Obj, 'skills');
     if (legacySkills !== undefined && !(Array.isArray(legacySkills) && legacySkills.length === 0)) {
       throw invalidInput('profile.skills is a legacy key and must be [] (skills live in the top-level library)');

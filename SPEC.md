@@ -497,6 +497,7 @@ Unit and integration tests remain the correctness oracle.
 
 - **Extraction:**
   - Use `pdfjs-dist` (pinned) on the actual PDF bytes, never on the HTML or JSON.
+  - Call `getTextContent({ disableNormalization: true })`. pdf.js otherwise applies its own Unicode normalization (it extracts `5 µm` as `5 μm`), which would hide symbol changes from the oracle.
   - For each page, collect the non-empty text runs and sort them by position: descending y, with runs whose y values differ by ≤ 2 pt treated as one line and ordered by ascending x.
   - **Joining runs:** on the same line, append a run with **no separator** when it abuts the previous one (`|x − (prevX + prevWidth)| < 1.5 pt`), and with one space otherwise. Between lines and between pages, insert one space. Concatenate the pages in order.
     - Why: with fallback fonts (offline), Chrome emits ligatures such as `fi` as separate abutting runs, and joining every run with a space produced `fi ndings` (docs/debugging.md, Phase 0). Upstream `@repo/resume-pdf` `readPdf` uses the same adjacency rule.
@@ -539,7 +540,7 @@ Unit and integration tests remain the correctness oracle.
   3. correct renderer input, with a test-only adapter that inserts a novel `<p>Injected paragraph outside any list.</p>` into the HTML before printing, caught by the approved full-text check;
   4. one expected bullet dropped;
   5. two bullets swapped;
-  6. a visible symbol substituted by a look-alike that general Unicode normalization would fold (e.g. expected `²` printed as `2`). The full-text check must fail, which shows normalization is limited to the ligatures.
+  6. a visible symbol substituted by a look-alike that Unicode normalization would fold, at either layer: expected `µ` (U+00B5) printed as `μ` (U+03BC), and `²` printed as `2`. The full-text check must fail, which shows that neither pdf.js nor our code normalizes beyond the ligatures.
 - **Multi-column regions** (Even's skills grid) are checked by skill names only.
 - **Hard failures:** fail if extraction is unavailable, the document is empty, or the page count is invalid. Report missing, duplicated, unexpected or out-of-order text with the case ID.
 - **Overflow fixture:** assemble and export through the real pipeline. Require ≥ 2 pages, never an exact count beyond that. Check every full bullet, not just the markers.

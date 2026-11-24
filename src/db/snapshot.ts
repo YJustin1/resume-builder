@@ -81,7 +81,34 @@ export function readSnapshot(db: Db): Snapshot {
   for (const row of db.prepare('SELECT * FROM resumes ORDER BY id').all() as Row[]) {
     resumes.set(str(row.id), readConfiguration(db, str(row.id), str(row.name)));
   }
-  return { profile: readProfile(db), entries, accomplishments, variants, skills, resumes };
+  return { profile: readProfile(db), entries, accomplishments, variants, skills, resumes, orderingProblems: readOrderingProblems(db) };
+}
+
+/** Every ordered group whose stored positions are not exactly 0..n-1. */
+export function readOrderingProblems(db: Db): Map<string, string[]> {
+  const groups = db
+    .prepare(
+      `SELECT resume_id, 'entries:' || kind AS grp, sort_index FROM resume_entries
+       UNION ALL SELECT resume_id, 'bullets:' || entry_id, sort_index FROM resume_bullets
+       UNION ALL SELECT resume_id, 'skills', sort_index FROM resume_skills
+       ORDER BY 1, 2, 3`,
+    )
+    .all() as { resume_id: string; grp: string; sort_index: number }[];
+  const byGroup = new Map<string, { resumeId: string; grp: string; idx: number[] }>();
+  for (const g of groups) {
+    const key = `${g.resume_id}\u0000${g.grp}`;
+    const entry = byGroup.get(key) ?? { resumeId: g.resume_id, grp: g.grp, idx: [] };
+    entry.idx.push(Number(g.sort_index));
+    byGroup.set(key, entry);
+  }
+  const problems = new Map<string, string[]>();
+  for (const { resumeId, grp, idx } of byGroup.values()) {
+    if (idx.every((v, i) => v === i)) continue;
+    const list = problems.get(resumeId) ?? [];
+    list.push(`${grp} positions are [${idx.join(', ')}], expected 0..${idx.length - 1}`);
+    problems.set(resumeId, list);
+  }
+  return problems;
 }
 
 export function readConfiguration(db: Db, resumeId: string, name: string): ResumeConfiguration {

@@ -89,13 +89,13 @@ export function dateOrder(start: string | undefined, end: string | undefined): v
 }
 
 export function email(value: unknown, field: string): string {
-  const s = plainText(value, field);
+  const s = text(value, field); // exported: includes the image check
   if (!validates({ basics: { name: 'x', email: s } })) throw invalidInput(`${field} is not a valid email address`);
   return s;
 }
 
 export function url(value: unknown, field: string): string {
-  const s = plainText(value, field);
+  const s = text(value, field); // exported: includes the image check
   if (!validates({ basics: { name: 'x', url: s } })) throw invalidInput(`${field} is not a valid URI`);
   const scheme = s.slice(0, s.indexOf(':')).toLowerCase();
   if (scheme !== 'http' && scheme !== 'https') throw invalidInput(`${field} must use http or https`);
