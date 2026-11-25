@@ -157,3 +157,29 @@ The last row is an equivalent mutant, not a gap: `lstat` never reports `isFile()
 **Status:** the cap was reached; the round-3 fix (epoch commit timing) is verified by tests but not yet by Codex.
 
 **Check:** `npm run check` gives 180 passed, 19 todo.
+
+## Phase 3 — render and export (2026-11-24)
+
+**Instruction:** "Go ahead", approving the Phase 3 plan, the `parse5@8.1.1` pin and the `printedHtml` field.
+
+**Work** (see docs/decisions.md, Phase 3):
+
+- `src/render/`: the adapter, the parse5 content policy and the pdf.js page count. `/preview` serves the §3.5 CSP; `/export/pdf` sends `X-Page-Count` and `X-Overflow-Warning`.
+- `tests/support/pdf.ts`, `oracle.ts`, `render.ts`: the §7.3 extractor and checks, plus a real renderer instrumented with a probe.
+- `tests/phase3/`: T11, T12, T14, T22, T23, self-tests 1, 2 (×3), 4, 5 and 6a–c, and the debugging.md #1 offline regression. The HTTP fixture harness now also runs T16, T16b and T26's printed, PDF and direct-SQL steps; the 19 Phase 3 todos are gone.
+- `tests/tools/candidate-goldens.ts`: writes candidate full-text goldens anywhere except `fixtures/`.
+
+**Found by the tests:** Even renders skill keywords as `<li>`, contrary to the §7.3 basis. The proposed revision is pending the owner (commit `6b6e5a1`).
+
+**Planted faults** (each reverted in a scratch copy; every one made at least one test fail):
+
+- policy disabled;
+- `X-Overflow-Warning` hard-coded to false;
+- page count fixed at 1;
+- CSP header removed;
+- single `<noscript>` parse;
+- pdf.js normalization on;
+- NFKC added to the extractor;
+- printer errors no longer mapped to `RENDER_FAILED`.
+
+**Check:** `npm run check` gives 254 passed, 4 todo. The todos are the three full-text goldens and self-test 3, all awaiting owner review of the candidates.
