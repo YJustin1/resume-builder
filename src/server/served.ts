@@ -10,6 +10,14 @@ import { fileURLToPath } from 'node:url';
 
 export const PROJECT = realpathSync(fileURLToPath(new URL('../../', import.meta.url)));
 export const CLIENT_DIR = join(PROJECT, 'src', 'client');
+/**
+ * The one build output path, absolute: used by the build (outDir), its
+ * cleanup guard, the built server (--ui) and the personal-database reservation.
+ * A relative outDir would resolve against the real path of src/client, which
+ * may be elsewhere if src/client is a symlink (Codex Phase 4 verification, round 3).
+ */
+export const BUILD_ROOT = join(PROJECT, 'dist');
+export const BUILD_OUT = join(BUILD_ROOT, 'client');
 
 export function servedDirs(): string[] {
   const nodeModules = realpathSync(join(PROJECT, 'node_modules'));

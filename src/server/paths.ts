@@ -9,6 +9,7 @@
 import { lstatSync, mkdirSync, realpathSync, statSync } from 'node:fs';
 import { basename, dirname, join, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { BUILD_ROOT } from './served.ts';
 
 export class PathError extends Error {
   constructor(message: string) {
@@ -65,7 +66,7 @@ const reserved = (demoDir: string) =>
  * The build output (`vite build` empties dist/client on every `npm run demo`),
  * located next to the code like the build itself, not under RB_ROOT.
  */
-const BUILD_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'dist');
+const BUILD_DIR = BUILD_ROOT;
 
 /**
  * Personal mode: DB_PATH, or `<repo>/.data/library.sqlite` when unset.

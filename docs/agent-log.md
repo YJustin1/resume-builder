@@ -301,4 +301,13 @@ Planted faults that failed tests: no build-output refusal; path comparison inste
 
 Planted faults that failed tests: no build-output check; only `index.html` checked; the built server trusting symlinked directories; saving ignoring deleted references.
 
-**Check:** `npm run check` gives 362 passed, 0 todo.
+**Check:** `npm run check` gave 362 passed, 0 todo.
+
+**Round 3 (the cap):** 2 blockers, both fixed. **They are not verified by the reviewer**, because the cap allows no fourth round.
+
+- **1. A symlinked client source could redirect the build cleanup (BLOCKER).** The relative `outDir` resolved against the real path of `src/client`. There is now one absolute build path (`BUILD_OUT` in `src/server/served.ts`), used by the build, its guard, the built server (`--ui`) and the personal-database reservation. Regression: with `src/client` symlinked into another tree whose `dist/client` holds a personal database, `npm run build` writes only to the project's own `dist/client`, and the database stays byte-identical.
+- **2. URL decoding mismatch (BLOCKER).** The middleware decoded with `decodeURIComponent`, Vite with `decodeURI`, so a file literally named `a%23b.txt` was checked under another name. The middleware now checks the union of the raw path, `decodeURI` and `decodeURIComponent` (each with Vite's fallbacks). Regression: a database alias named `a%23b.txt`, requested as `/a%23b.txt`, gets 403.
+
+Planted faults: a relative `outDir` and a `decodeURIComponent`-only check each fail their regression.
+
+**Check:** `npm run check` gives 363 passed, 0 todo.

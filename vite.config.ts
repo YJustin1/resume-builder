@@ -3,10 +3,9 @@
 // app is served by the API server itself (`npm run demo`, `--ui`).
 
 import { lstatSync, realpathSync } from 'node:fs';
-import { join } from 'node:path';
 import react from '@vitejs/plugin-react';
 import { defineConfig, type Plugin } from 'vite';
-import { CLIENT_DIR, PROJECT, servedDirs } from './src/server/served.ts';
+import { BUILD_OUT, BUILD_ROOT, CLIENT_DIR, servedDirs } from './src/server/served.ts';
 
 export const API_PORT = Number(process.env.API_PORT ?? 5174);
 const client = realpathSync(CLIENT_DIR);
@@ -21,7 +20,7 @@ const safeOutDir: Plugin = {
   name: 'resume-builder-safe-outdir',
   apply: 'build',
   configResolved() {
-    for (const dir of [join(PROJECT, 'dist'), join(PROJECT, 'dist', 'client')]) {
+    for (const dir of [BUILD_ROOT, BUILD_OUT]) {
       let st;
       try {
         st = lstatSync(dir);
@@ -42,7 +41,7 @@ export default defineConfig({
   // Test copies point this at a private directory so parallel dev servers don't share a cache.
   ...(process.env.VITE_CACHE_DIR ? { cacheDir: process.env.VITE_CACHE_DIR } : {}),
   plugins: [safeOutDir, react()],
-  build: { outDir: '../../dist/client', emptyOutDir: true },
+  build: { outDir: BUILD_OUT, emptyOutDir: true },
   server: {
     host: '127.0.0.1',
     port: Number(process.env.UI_PORT ?? 5173),

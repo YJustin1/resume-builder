@@ -62,22 +62,35 @@ const realOrNull = (path: string): string | null => {
   }
 };
 
+const decodings = (raw: string): string[] => {
+  const out = new Set([raw]);
+  for (const decode of [decodeURI, decodeURIComponent]) {
+    try {
+      out.add(decode(raw));
+    } catch {
+      // malformed escape: that decoder would not find a file either
+    }
+  }
+  return [...out];
+};
+
 /**
  * Every file a request could make Vite read, resolved through symlinks. Rather
- * than mirror Vite's static handler exactly, take all its fallbacks: the path,
- * the path with .html/.htm, and for a directory its index, index.html and
- * index.htm (verification round 2, finding 2).
+ * than mirror Vite's static handler exactly, take the union over the ways the
+ * path may be decoded (raw, decodeURI as Vite's static handler does,
+ * decodeURIComponent; verification round 3, finding 2) and over its fallbacks:
+ * the path, the path with .html/.htm, and for a directory its index,
+ * index.html and index.htm (round 2, finding 2).
  */
 function resolvedTargets(url: string): string[] {
-  let path: string;
-  try {
-    path = decodeURIComponent(url.split(/[?#]/)[0]!);
-  } catch {
-    return [];
+  const raw = url.split(/[?#]/)[0]!;
+  const targets: string[] = [];
+  for (const path of decodings(raw)) {
+    const file = path.startsWith('/@fs/') ? path.slice('/@fs'.length) : join(client, path);
+    const candidates = [file, `${file}.html`, `${file}.htm`, join(file, 'index'), join(file, 'index.html'), join(file, 'index.htm')];
+    for (const p of candidates.map(realOrNull)) if (p !== null && !isDirectory(p)) targets.push(p);
   }
-  const file = path.startsWith('/@fs/') ? path.slice('/@fs'.length) : join(client, path);
-  const candidates = [file, `${file}.html`, `${file}.htm`, join(file, 'index'), join(file, 'index.html'), join(file, 'index.htm')];
-  return candidates.map(realOrNull).filter((p): p is string => p !== null && !isDirectory(p));
+  return targets;
 }
 
 const isDirectory = (path: string) => {
