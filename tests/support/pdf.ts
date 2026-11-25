@@ -40,8 +40,17 @@ export function normalizeText(text: string): string {
     .trim();
 }
 
+export interface PageGeometry {
+  /** Page height in points (Letter: 792). */
+  height: number;
+  /** Highest and lowest text baseline on the page, in points from the bottom. */
+  topBaseline: number;
+  bottomBaseline: number;
+}
+
 export interface Extracted {
   pageCount: number;
+  geometry: PageGeometry[];
   /** Position-ordered visual lines, one array per page, before normalization. */
   lines: string[][];
   /** Normalized full text (§7.3). */
@@ -85,19 +94,23 @@ export async function extractPdf(bytes: Uint8Array, options: ExtractOptions = {}
   try {
     const doc = await task.promise;
     const lines: string[][] = [];
+    const geometry: PageGeometry[] = [];
     for (let n = 1; n <= doc.numPages; n++) {
-      const content = await (await doc.getPage(n)).getTextContent({ disableNormalization: !options.pdfjsNormalization });
+      const page = await doc.getPage(n);
+      const content = await page.getTextContent({ disableNormalization: !options.pdfjsNormalization });
       const runs: Run[] = [];
       for (const item of content.items) {
         if (!('str' in item) || item.str === '') continue;
         runs.push({ str: item.str, x: item.transform[4], y: item.transform[5], width: item.width });
       }
       lines.push(linesOf(runs, join));
+      const ys = runs.map((r) => r.y);
+      geometry.push({ height: page.view[3]! - page.view[1]!, topBaseline: Math.max(...ys), bottomBaseline: Math.min(...ys) });
     }
     const text = normalizeText(lines.map((page) => page.join(' ')).join(' '));
     if (doc.numPages < 1) throw new Error('PDF has no pages');
     if (text === '') throw new Error('PDF has no extractable text');
-    return { pageCount: doc.numPages, lines, text };
+    return { pageCount: doc.numPages, geometry, lines, text };
   } finally {
     await task.destroy();
   }
@@ -166,6 +179,24 @@ export function oracleProblems(oracle: PdfOracle, pdf: Extracted, overflowWarnin
     p.push(`overflowWarning ${overflowWarning} != ${oracle.overflowWarning}`);
   }
   return p;
+}
+
+// ---------------------------------------------------------------- page layout (D19)
+
+/** Every bullet whole on one page (break-inside: avoid). */
+export function splitBulletProblems(pdf: Extracted, bullets: string[]): string[] {
+  const pages = pdf.lines.map((page) => normalizeText(page.join(' ')));
+  return bullets.map(normalizeText).flatMap((b) => (pages.some((p) => p.includes(b)) ? [] : [`bullet split across pages: "${short(b)}"`]));
+}
+
+/** 0.5 in = 36 pt. No text baseline inside the top margin of pages 2+ or the bottom margin of any page. */
+export const PAGE_MARGIN_PT = 36;
+
+export function marginProblems(pdf: Extracted): string[] {
+  return pdf.geometry.flatMap((g, i) => [
+    ...(i > 0 && g.topBaseline > g.height - PAGE_MARGIN_PT ? [`page ${i + 1}: text at ${g.topBaseline.toFixed(1)} pt, inside the top margin`] : []),
+    ...(g.bottomBaseline < PAGE_MARGIN_PT ? [`page ${i + 1}: text at ${g.bottomBaseline.toFixed(1)} pt, inside the bottom margin`] : []),
+  ]);
 }
 
 // ---------------------------------------------------------------- derived exclusion set

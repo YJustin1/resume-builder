@@ -1,7 +1,7 @@
 // Rendering adapter (SPEC §3.2 steps 2–5). One interface for the HTML preview
 // and the PDF export, so both use the same rendering of the same document:
 //
-//   resume ──backend.html──▶ HTML ──content policy──▶ preview
+//   resume ──backend.html──▶ HTML ──+print stylesheet──content policy──▶ preview
 //                                        └──backend.print──▶ PDF bytes ──pdf.js──▶ page count
 //
 // The backend (resumed.render + Even, resumed.pdf + Puppeteer) can be replaced
@@ -47,6 +47,20 @@ export const resumedBackend: RenderBackend = {
   print: (html, resume) => resumedPdf(html, resume as unknown as ResumedResume, theme),
 };
 
+/**
+ * D19: Even sets no page margins (Puppeteer defaults to 0), so continuation
+ * pages started at the paper edge, and nothing kept a bullet on one page.
+ * Margins on every page except the top of page 1, where Even's grey header
+ * band stays flush; bullets never split across pages. Print-only rules, so the
+ * on-screen preview looks the same as before.
+ */
+export const PRINT_STYLESHEET = '<style>@page{margin:0.5in 0}@page:first{margin-top:0}li{break-inside:avoid}</style>';
+
+function withPrintStylesheet(html: string): string {
+  const head = /<\/head>/i.exec(html);
+  return head ? html.slice(0, head.index) + PRINT_STYLESHEET + html.slice(head.index) : PRINT_STYLESHEET + html;
+}
+
 const renderFailed = (message: string, cause: unknown) => new ServiceError('RENDER_FAILED', message, undefined, cause);
 
 export function createRenderer(overrides: Partial<RenderBackend> = {}): Renderer {
@@ -60,8 +74,9 @@ export function createRenderer(overrides: Partial<RenderBackend> = {}): Renderer
       throw renderFailed('rendering the resume to HTML failed', error);
     }
     if (typeof html !== 'string' || html.trim() === '') throw renderFailed('the theme produced no HTML', html);
-    enforceContentPolicy(html);
-    return html;
+    const page = withPrintStylesheet(html);
+    enforceContentPolicy(page);
+    return page;
   }
 
   async function renderPdf(resume: JsonResume): Promise<PrintedPdf> {

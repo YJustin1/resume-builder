@@ -26,3 +26,12 @@ Each entry records the choice, the alternative, the change (commit), the check (
 - **Skill `level`:** Even does not print it (Platform: `SQL`, level `Intermediate`). This is theme behaviour that FR-04 already anticipates.
 - **Printed-bullet check revised (D18, owner-approved):** Even 0.27.0 renders each skill **keyword** as an `<li>` (`ul.tag-list`). That contradicts §7.3's old basis, which said skills have no `<li>`, so T23 failed under the rule as written. The expected `<li>` list now ends with the skill keywords, skill by skill. The alternative of skipping Even's keyword lists was rejected because an item injected into one would go undetected. Code: `6b6e5a1`; SPEC §3.3, §7.3 and D18 updated to match.
 - **Known defect, not fixed:** `resumed.pdf` has no `try/finally` around `browser.close()`. If `setContent` or `pdf` throws (for example after a 30 s navigation timeout), the Chrome process stays alive until the server exits. The request itself still returns `500 RENDER_FAILED`.
+- **Page margins and unbroken bullets (D19, owner-approved after visual inspection):**
+  - The owner found that Overflow's continuation pages started too close to the top edge. Even sets no page margins and Puppeteer defaults to 0.
+  - Three variants were compared:
+    - (A) Puppeteer margins left a white strip above Even's grey header on page 1;
+    - (B) CSS `@page` margins with none on page 1 kept the header flush, but split Case 10 across pages, showing that the old unsplit output was luck;
+    - (C) B plus `li { break-inside: avoid }` was chosen.
+  - The adapter injects it before `</head>`, so preview and print get the same HTML. Overflow is still 4 pages; Security and Platform still 1 page each; the approved goldens are unchanged.
+  - New checks: no text baseline inside the 36 pt margins (top of pages 2+, bottom of every page), and every highlight whole on one page.
+  - Planted faults: removing the stylesheet fails the margin check (text at 780 pt), and removing only the keep-together rule fails the split check (Case 10).

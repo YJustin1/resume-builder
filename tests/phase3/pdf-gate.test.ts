@@ -18,7 +18,7 @@ describe.each(PDF_CASES)('$id $name: real PDF against the §7.3 oracle', (c) => 
     `JSON, same object, oracle fields, derived exclusions, printed bullets, headers${golden ? ', approved full text' : ''}`,
     async () => {
       const run = await runPdfOracle(c);
-      expect(run.problems, c.id).toEqual({ json: [], sameObject: [], oracle: [], exclusions: [], printedBullets: [], fullText: [], headers: [] });
+      expect(run.problems, c.id).toEqual({ json: [], sameObject: [], oracle: [], exclusions: [], printedBullets: [], fullText: [], headers: [], layout: [] });
       expect(run.fullTextChecked).toBe(golden !== undefined);
       if (run.skipped.length) console.info(`${c.id} derived exclusions skipped (substrings of selected text):`, run.skipped);
     },

@@ -8,7 +8,9 @@ import {
   derivedExclusions,
   absentProblems,
   fullTextProblems,
+  marginProblems,
   oracleProblems,
+  splitBulletProblems,
   printedBulletProblems,
   readGolden,
   type Extracted,
@@ -43,6 +45,8 @@ export interface OracleRun {
     printedBullets: string[];
     fullText: string[];
     headers: string[];
+    /** D19: margins and whole bullets. */
+    layout: string[];
   };
   /** Derived exclusion strings skipped as substrings of selected text (reported, §7.3). */
   skipped: string[];
@@ -84,6 +88,10 @@ export async function runPdfOracle(c: PdfCase, probe?: Probe, golden = readGolde
       printedBullets: printedBulletProblems(printedHtml, expected),
       fullText: golden ? fullTextProblems(golden, pdf) : [],
       headers: headerProblems,
+      layout: [
+        ...marginProblems(pdf),
+        ...splitBulletProblems(pdf, [...(expected.work ?? []), ...(expected.projects ?? [])].flatMap((e: any) => e.highlights ?? [])),
+      ],
     },
     skipped: exclusions.skipped,
     fullTextChecked: golden !== undefined,
