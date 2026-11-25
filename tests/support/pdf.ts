@@ -221,10 +221,7 @@ export function listItems(html: string): string[] {
  * present basics.email / phone / url), the <li> texts of the printed HTML must
  * equal exactly the work highlights, then the project highlights, then the
  * skill keywords (skill by skill), in order.
- *
- * PENDING OWNER APPROVAL: the skill keywords. SPEC §7.3 says Even renders
- * skills without <li>, but Even 0.27.0 renders each skill keyword as <li>
- * (ul.tag-list), which T23 exercises.
+ * The skill keywords are D18: Even 0.27.0 renders each one as <li> (ul.tag-list).
  */
 export function printedBulletProblems(printedHtml: string, expectedDoc: any): string[] {
   const items = listItems(printedHtml);

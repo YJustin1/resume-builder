@@ -26,6 +26,7 @@
 | D15 | Keep the identifier `variant` in data, API and code, but call it a **wording variant** in UI and docs. It is never a "resume variant" (upstream's term for a whole-resume copy) | Approved by owner (2026-11-24) |
 | D16 | Dates use the JSON Resume `iso8601` subset: `YYYY`, `YYYY-MM`, `YYYY-MM-DD` | Approved by owner (2026-11-24) |
 | D17 | `basics.label` is global; `basics.summary` is **not supported** in the MVP; no per-resume headline | Approved by owner (summary excluded) |
+| D18 | The §7.3 printed-bullet check also expects the skill keywords as `<li>` (after the project highlights), because Even renders them that way; F2 must do the same | Approved by owner (2026-11-24, Phase 3) |
 
 Agents must not change any of these without owner approval.
 
@@ -129,7 +130,7 @@ Third-party software is reused and credited (§12), not claimed as original work
 | `orderedSequence` section order | Even's | Even's | The template's order, by owner-approved fixture revision |
 | Approved full-text files | Approved for Even | Re-approved | Re-approved |
 | §3.5 URL/asset policy test (T26) | As written | Same | Write-time rejection of image syntax stays (it uses the theme's parser regardless of renderer). The template renders no Markdown, so, by revision: the link step expects the literal text, and the direct-SQL bypass step expects export `200` with the bypass string printed literally and no `<img>` (runtime enforcement still runs and finds nothing) |
-| Contact items in the printed-bullet check (§7.3) | Even's contact `<li>` list | Same | The template renders contact values (email, phone, url) as `<li>` in one list before the entries, and highlights as `<li>`, with nothing else as `<li>`. The §7.3 rule applies unchanged |
+| Contact items in the printed-bullet check (§7.3) | Even's contact `<li>` list | Same | The template renders contact values (email, phone, url) as `<li>` in one list before the entries, and highlights and skill keywords as `<li>`, with nothing else as `<li>`. The §7.3 rule applies unchanged |
 
 ### 3.5 URL, link and asset policy
 
@@ -529,11 +530,12 @@ Unit and integration tests remain the correctness oracle.
   - **Where it applies:** the render adapter exposes the exact HTML string it passes to `resumed.pdf`, and the check runs on that string.
   - **Expected list:** take the text of every `<li>` element in document order (HTML-unescaped, whitespace-normalized). After the leading contact items, the list must equal exactly:
     1. the expected JSON's work highlights in order;
-    2. then the project highlights in order (the theme's section order, D12).
+    2. then the project highlights in order (the theme's section order, D12);
+    3. then the skill keywords, skill by skill, in the resume's skill order (D18).
   - **Contact items:** the leading items are Even's contact list. As a multiset, they must equal the expected document's present `basics.email`, `basics.phone` and `basics.url` values.
   - **Effect:** occurrence counts and numeric content are preserved, so an extra `42%.` or `Sample Candidate` item fails.
-  - **Basis:** Even 0.27.0 renders contact items and highlights as `<li>` and skills without `<li>` (verified on the spike output, EVALUATION.md E5).
-  - **Other renderers:** the fallback template F2 must render the contact values (email, phone, url) as `<li>` in one list before the entries, highlights as `<li>`, and no other content as `<li>` (§3.3). Any other theme requires an owner-approved revision of this rule.
+  - **Basis:** Even 0.27.0 renders contact items, highlights and skill keywords (`ul.tag-list`) as `<li>`, and skill names without `<li>`. The skill-keyword `<li>` was found in Phase 3 by T23; the original basis (EVALUATION.md E5) had no keywords (D18). Education `courses` and project keywords would also be `<li>` in Even, but the assembler emits neither.
+  - **Other renderers:** the fallback template F2 must render the contact values (email, phone, url) as `<li>` in one list before the entries, highlights and skill keywords as `<li>`, and no other content as `<li>` (§3.3). Any other theme requires an owner-approved revision of this rule.
   - **Coverage:** together with the PDF-text checks above (every expected bullet exactly once and in order in the PDF, plus the exclusion sets), this verifies the complete bullet sequence that reached the printer, and that it survived printing.
 - **Approved full-text check (catches invented visible content anywhere, including outside `<li>`).**
   - **The oracle:** each PDF fixture case (T11, T12, T23) has an owner-approved file `fixtures/<case>.pdf.text.txt`. The normalized, position-ordered full text of the PDF (§7.3 extraction) must equal it exactly. Exact equality preserves counts, digits and order, so any added, dropped or changed visible text fails.

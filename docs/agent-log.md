@@ -169,7 +169,7 @@ The last row is an equivalent mutant, not a gap: `lstat` never reports `isFile()
 - `tests/phase3/`: T11, T12, T14, T22, T23, self-tests 1, 2 (×3), 4, 5 and 6a–c, and the debugging.md #1 offline regression. The HTTP fixture harness now also runs T16, T16b and T26's printed, PDF and direct-SQL steps; the 19 Phase 3 todos are gone.
 - `tests/tools/candidate-goldens.ts`: writes candidate full-text goldens anywhere except `fixtures/`.
 
-**Found by the tests:** Even renders skill keywords as `<li>`, contrary to the §7.3 basis. The proposed revision is pending the owner (commit `6b6e5a1`).
+**Found by the tests:** Even renders skill keywords as `<li>`, contrary to the §7.3 basis. The owner chose to add them to the expected list rather than skip keyword lists (D18).
 
 **Planted faults** (each reverted in a scratch copy; every one made at least one test fail):
 
