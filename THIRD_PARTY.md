@@ -36,3 +36,7 @@ Application dependencies added after `start` (for example React, Vite, an HTTP s
 | `hono` | 4.13.21 | MIT | Phase 2 | HTTP routing for the local API |
 | `@hono/node-server` | 2.1.11 | MIT | Phase 2 | Serves the Hono app on Node (`src/server/main.ts`) |
 | `parse5` | 8.1.1 | MIT | Phase 3 | HTML parser for the runtime content policy (SPEC §3.5) on every rendered document before preview or printing, and for the printed-bullet check in tests. Brings in `entities` 9.0.0 (BSD-2-Clause) |
+| `react`, `react-dom` | 19.3.1 | MIT | Phase 4 | Browser UI (`src/client/`) |
+| `vite` (dev) | 8.3.7 | MIT | Phase 4 | UI dev server with the `/api` proxy (`npm run dev`) and production build (`npm run build`, served by the API server in `npm run demo`) |
+| `@vitejs/plugin-react` (dev) | 6.3.0 | MIT | Phase 4 | JSX/TSX support for Vite |
+| `@types/react`, `@types/react-dom` (dev) | 19.3.0 | MIT | Phase 4 | React type definitions |

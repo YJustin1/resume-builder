@@ -7,10 +7,17 @@ import { openDatabase } from '../db/database.ts';
 import { Library } from '../db/library.ts';
 import { createApp } from './app.ts';
 import { acquireDemoLock } from './demo-lock.ts';
-import { dirname } from 'node:path';
+import { existsSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import { PathError, prepareDemoDbPath, REPO_ROOT, resolvePersonalDbPath } from './paths.ts';
 
 const demo = process.argv.includes('--demo');
+// --ui: also serve the built client (dist/client, from `vite build`) on the same port.
+const uiDir = process.argv.includes('--ui') ? join(REPO_ROOT, 'dist', 'client') : undefined;
+if (uiDir && !existsSync(join(uiDir, 'index.html'))) {
+  process.stderr.write(`Refusing to start: no built UI at ${uiDir}; run \`npm run build\` first.\n`);
+  process.exit(2);
+}
 let dbPath: string;
 let releaseLock = () => {};
 try {
@@ -28,10 +35,10 @@ try {
 
 process.on('exit', () => releaseLock());
 const db = openDatabase(dbPath);
-const app = createApp(new Library(db));
+const app = createApp(new Library(db), uiDir ? { uiDir } : {});
 const port = Number(process.env.PORT ?? 5174);
 const server = serve({ fetch: app.fetch, hostname: '127.0.0.1', port }, (info) => {
-  process.stdout.write(`listening on http://127.0.0.1:${info.port} (${demo ? 'demo' : 'personal'} db: ${dbPath})\n`);
+  process.stdout.write(`listening on http://127.0.0.1:${info.port} (${demo ? 'demo' : 'personal'} db: ${dbPath}${uiDir ? '; UI at /' : ''})\n`);
 });
 
 for (const signal of ['SIGINT', 'SIGTERM'] as const) {

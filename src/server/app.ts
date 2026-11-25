@@ -3,6 +3,8 @@
 // affectedResumes? } }`. Preview and PDF export go through the rendering
 // adapter (src/render), which enforces the runtime content policy.
 
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { Hono, type Context } from 'hono';
 import { invalidInput, notFound, ServiceError } from '../core/errors.ts';
 import { id as checkId } from '../core/fields.ts';
@@ -14,10 +16,31 @@ import { createRenderer, type Renderer } from '../render/adapter.ts';
 export const PREVIEW_CSP =
   "default-src 'none'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data:";
 
+/**
+ * The built UI's policy: only its own scripts, styles and API; the preview
+ * iframe (same origin, itself sandboxed with its own CSP); no plugins, no
+ * framing of the app, no inline scripts.
+ */
+export const UI_CSP =
+  "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; " +
+  "frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'";
+
 export interface AppOptions {
   /** Rendering adapter; tests inject failing or instrumented ones (T14, §7.3 self-tests). */
   renderer?: Renderer;
+  /** Directory of the built client (`vite build`), served at / (SPEC §6: "the API server serves the UI files"). */
+  uiDir?: string;
 }
+
+const ASSET_TYPES: Record<string, string> = {
+  js: 'text/javascript; charset=utf-8',
+  css: 'text/css; charset=utf-8',
+  svg: 'image/svg+xml',
+  woff2: 'font/woff2',
+  map: 'application/json; charset=utf-8',
+};
+/** Vite emits flat, hashed file names under assets/; nothing else is served (no traversal possible). */
+const ASSET_NAME = /^[A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)*\.(js|css|svg|woff2|map)$/;
 
 function errorBody(error: ServiceError) {
   return {
@@ -90,6 +113,36 @@ export function createApp(lib: Library, options: AppOptions = {}): Hono {
     guard(c);
     await next();
   });
+
+  if (options.uiDir) {
+    const uiDir = options.uiDir;
+    const uiHeaders = (c: Context) => {
+      c.header('Content-Security-Policy', UI_CSP);
+      c.header('X-Content-Type-Options', 'nosniff');
+      c.header('Referrer-Policy', 'no-referrer');
+    };
+    app.get('/', (c) => {
+      guard(c);
+      uiHeaders(c);
+      c.header('Cache-Control', 'no-store');
+      return c.html(readFileSync(join(uiDir, 'index.html'), 'utf8'));
+    });
+    app.get('/assets/:file', (c) => {
+      guard(c);
+      const file = c.req.param('file');
+      const ext = ASSET_NAME.exec(file)?.[1];
+      if (!ext) throw notFound(`no asset ${file}`);
+      let data: Buffer;
+      try {
+        data = readFileSync(join(uiDir, 'assets', file));
+      } catch {
+        throw notFound(`no asset ${file}`);
+      }
+      uiHeaders(c);
+      c.header('Cache-Control', 'public, max-age=31536000, immutable');
+      return c.body(new Uint8Array(data), 200, { 'Content-Type': ASSET_TYPES[ext]! });
+    });
+  }
 
   app.onError((error, c) => {
     if (error instanceof ServiceError) {
