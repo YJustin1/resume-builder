@@ -50,15 +50,13 @@ export interface OracleRun {
   };
   /** Derived exclusion strings skipped as substrings of selected text (reported, §7.3). */
   skipped: string[];
-  /** False when the case has no approved golden yet (the full-text check did not run). */
-  fullTextChecked: boolean;
   pdf: Extracted;
   headers: Headers;
   printedHtml: string;
   bytes: Uint8Array;
 }
 
-export async function runPdfOracle(c: PdfCase, probe?: Probe, golden = readGolden(c.name)?.segments): Promise<OracleRun> {
+export async function runPdfOracle(c: PdfCase, probe?: Probe, golden = readGolden(c.name).segments): Promise<OracleRun> {
   const api = new Api(freshLibrary(c.input), probe);
   const expected = readFixture(c.expected);
   const oracle = readFixture<PdfOracle>(`${c.name}.pdf.expected.json`);
@@ -86,7 +84,7 @@ export async function runPdfOracle(c: PdfCase, probe?: Probe, golden = readGolde
       oracle: oracleProblems(oracle, pdf, warning === 'true'),
       exclusions: absentProblems('derived exclusion', pdf.text, exclusions.absent),
       printedBullets: printedBulletProblems(printedHtml, expected),
-      fullText: golden ? fullTextProblems(golden, pdf) : [],
+      fullText: fullTextProblems(golden, pdf),
       headers: headerProblems,
       layout: [
         ...marginProblems(pdf),
@@ -94,7 +92,6 @@ export async function runPdfOracle(c: PdfCase, probe?: Probe, golden = readGolde
       ],
     },
     skipped: exclusions.skipped,
-    fullTextChecked: golden !== undefined,
     pdf,
     headers,
     printedHtml,

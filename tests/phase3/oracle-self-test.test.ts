@@ -7,7 +7,7 @@ import type { JsonResume } from '../../src/core/assemble.ts';
 import { resumedBackend, resumedPrinter } from '../../src/render/adapter.ts';
 import { readFixture } from '../support/harness.ts';
 import { allProblems, caseById, runPdfOracle } from '../support/oracle.ts';
-import { extractPdf, fullTextProblems, oracleProblems, readGolden } from '../support/pdf.ts';
+import { extractPdf, fullTextProblems, oracleProblems } from '../support/pdf.ts';
 import { insertBeforeFirstHighlight, probeRenderer } from '../support/render.ts';
 
 const TIMEOUT = 60_000;
@@ -42,12 +42,11 @@ describe('§7.3 oracle self-tests: every planted fault is caught', () => {
     TIMEOUT,
   );
 
-  const golden = readGolden(T11.name);
-  (golden ? it : it.todo)(
+  it(
     '3: correct input, a novel <p> outside any list → approved full-text check (and only that check)',
     async () => {
       const inject = insertBeforeFirstHighlight('<p>Injected paragraph outside any list.</p>');
-      const run = await runPdfOracle(T11, probeRenderer({ inject }), golden!.segments);
+      const run = await runPdfOracle(T11, probeRenderer({ inject }));
       expect(run.problems.fullText).not.toEqual([]);
       const { fullText, ...others } = run.problems;
       expect(Object.values(others).flat()).toEqual([]); // why the full-text golden exists

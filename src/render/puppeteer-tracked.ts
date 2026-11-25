@@ -23,7 +23,11 @@ export const printSessions: AsyncLocalStorage<PrintSession> = (store[KEY] ??= ne
 
 export async function launch(options: LaunchOptions = {}): Promise<Browser> {
   const session = printSessions.getStore();
-  const browser = await puppeteer.launch(session ? { timeout: session.timeoutMs, ...options } : options);
+  // `timeout` bounds the launch; `protocolTimeout` bounds every CDP call, including
+  // resumed's `page.evaluate(() => document.fonts.ready)`, which no page timeout covers.
+  const browser = await puppeteer.launch(
+    session ? { timeout: session.timeoutMs, protocolTimeout: session.timeoutMs, ...options } : options,
+  );
   if (!session) return browser;
   session.browsers.push(browser);
   const newPage = browser.newPage.bind(browser);

@@ -142,3 +142,28 @@ describe('rendering adapter failure paths (FR-06, T14 at the adapter level)', ()
     expect(print).not.toHaveBeenCalled();
   });
 });
+
+describe('link neutralization (§3.5 rule 3: other schemes are neutralized, not refused)', () => {
+  it('blanks tel:, irc:, xmpp: and other disallowed hrefs, keeps the link text and every other byte', async () => {
+    const { neutralizeLinks } = await import('../../src/render/policy.ts');
+    const html = body(
+      '<a href="tel:+15125550100">+1 512 555 0100</a> <a class="x" href=\'irc://h/c\'>chat</a> <a href=xmpp:a@b>x</a> ' +
+        '<a href="https://example.com/">site</a> <a href="mailto:m@x">mail</a> <a href="">gone</a> <use href="#i"></use>',
+    );
+    expect(neutralizeLinks(html)).toBe(
+      body(
+        '<a href="">+1 512 555 0100</a> <a class="x" href="">chat</a> <a href="">x</a> ' +
+          '<a href="https://example.com/">site</a> <a href="mailto:m@x">mail</a> <a href="">gone</a> <use href="#i"></use>',
+      ),
+    );
+    expect(contentPolicyViolation(neutralizeLinks(html))).toBeNull();
+  });
+
+  it("leaves Even's output for every expected document unchanged (it has no disallowed links)", async () => {
+    const { neutralizeLinks } = await import('../../src/render/policy.ts');
+    for (const file of ['security', 'engineering', 'overflow', 'sections.platform', 'sections.data']) {
+      const html = await resumedBackend.html(readFixture(`${file}.expected.json`));
+      expect(neutralizeLinks(html), file).toBe(html);
+    }
+  });
+});

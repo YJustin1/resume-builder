@@ -7,24 +7,20 @@ import { PREVIEW_CSP } from '../../src/server/app.ts';
 import { dumpRows, freshLibrary, readFixture } from '../support/harness.ts';
 import { Api } from '../support/http.ts';
 import { allProblems, caseById, PDF_CASES, runPdfOracle } from '../support/oracle.ts';
-import { readGolden } from '../support/pdf.ts';
 import { probeRenderer } from '../support/render.ts';
 
 const TIMEOUT = 60_000;
 
 describe.each(PDF_CASES)('$id $name: real PDF against the §7.3 oracle', (c) => {
-  const golden = readGolden(c.name);
   it(
-    `JSON, same object, oracle fields, derived exclusions, printed bullets, headers${golden ? ', approved full text' : ''}`,
+    'JSON, same object, oracle fields, derived exclusions, printed bullets, headers, approved full text, layout',
     async () => {
       const run = await runPdfOracle(c);
       expect(run.problems, c.id).toEqual({ json: [], sameObject: [], oracle: [], exclusions: [], printedBullets: [], fullText: [], headers: [], layout: [] });
-      expect(run.fullTextChecked).toBe(golden !== undefined);
       if (run.skipped.length) console.info(`${c.id} derived exclusions skipped (substrings of selected text):`, run.skipped);
     },
     TIMEOUT,
   );
-  if (!golden) it.todo(`approved full text equals fixtures/${c.name}.pdf.text.txt (awaiting owner review)`);
 });
 
 describe('T11 preview', () => {

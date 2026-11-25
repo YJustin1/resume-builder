@@ -10,7 +10,7 @@ import { FIXTURES } from './harness.ts';
 
 // ---------------------------------------------------------------- extraction
 
-interface Run {
+export interface Run {
   str: string;
   x: number;
   y: number;
@@ -57,15 +57,26 @@ export interface Extracted {
   text: string;
 }
 
-function linesOf(runs: Run[], join: 'adjacency' | 'space'): string[] {
-  const sorted = [...runs].sort((a, b) => (Math.abs(b.y - a.y) > LINE_TOLERANCE ? b.y - a.y : a.x - b.x));
+/**
+ * Group runs into visual lines: sort by descending baseline (ties by x, so the
+ * result never depends on content-stream order), start a new line when a run is
+ * more than LINE_TOLERANCE below the line's FIRST baseline, then order each line
+ * by ascending x. (A pairwise "same line" comparator is not transitive: runs at
+ * y 100, 98.5 and 97 would sort differently depending on input order.)
+ */
+export function groupLines(runs: Run[]): Run[][] {
+  const sorted = [...runs].sort((a, b) => b.y - a.y || a.x - b.x);
   const lines: Run[][] = [];
   for (const run of sorted) {
     const line = lines.at(-1);
-    if (line && Math.abs(line[0]!.y - run.y) <= LINE_TOLERANCE) line.push(run);
+    if (line && line[0]!.y - run.y <= LINE_TOLERANCE) line.push(run);
     else lines.push([run]);
   }
-  return lines.map((line) => {
+  return lines.map((line) => line.sort((a, b) => a.x - b.x || b.y - a.y));
+}
+
+function linesOf(runs: Run[], join: 'adjacency' | 'space'): string[] {
+  return groupLines(runs).map((line) => {
     let out = '';
     let prev: Run | undefined;
     for (const run of line) {
@@ -256,7 +267,13 @@ export function listItems(html: string): string[] {
  */
 export function printedBulletProblems(printedHtml: string, expectedDoc: any): string[] {
   const items = listItems(printedHtml);
-  const contacts = ['email', 'phone', 'url'].map((k) => expectedDoc.basics?.[k]).filter((v): v is string => typeof v === 'string');
+  // Even prints basics.url without its scheme and trailing slash (components/link.js),
+  // a theme formatting rule like its date format; email and phone print as stored.
+  const shown = (key: string, v: string) => (key === 'url' ? v.replace(/^(https?:|)\/\//, '').replace(/\/$/, '') : v);
+  const contacts = ['email', 'phone', 'url'].flatMap((k) => {
+    const v = expectedDoc.basics?.[k];
+    return typeof v === 'string' ? [shown(k, v)] : [];
+  });
   const highlights = [
     ...[...(expectedDoc.work ?? []), ...(expectedDoc.projects ?? [])].flatMap((e: any) => e.highlights ?? []),
     ...(expectedDoc.skills ?? []).flatMap((s: any) => s.keywords ?? []),
@@ -330,9 +347,11 @@ export function goldenPath(name: string): URL {
   return new URL(`${name}.pdf.text.txt`, FIXTURES);
 }
 
-export function readGolden(name: string): Golden | undefined {
+/** The approved golden; a missing or unapproved file is a hard failure (§7.3, §9). */
+export function readGolden(name: string): Golden {
   const path = goldenPath(name);
-  return existsSync(path) ? parseGolden(readFileSync(path, 'utf8')) : undefined;
+  if (!existsSync(path)) throw new Error(`missing approved full-text golden ${path.pathname}`);
+  return parseGolden(readFileSync(path, 'utf8'));
 }
 
 /**

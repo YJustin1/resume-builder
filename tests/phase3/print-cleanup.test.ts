@@ -75,6 +75,30 @@ describe('D20: Chrome is closed after every print, and a hung network fails fast
     expect(await exited(pid)).toBe(true);
   }, 30_000);
 
+  it('page loads but the font wait never ends (resumed awaits document.fonts.ready): fails within the timeout too', async () => {
+    // Chrome holds the load event for fonts used at first layout, so the font
+    // load starts only after load: setContent succeeds and the hang moves into
+    // page.evaluate(() => document.fonts.ready), which only the CDP protocol timeout bounds.
+    const html =
+      '<!doctype html><html><head><script>addEventListener("load", () => {' +
+      'const f = new FontFace("Hang", "url(https://fonts.gstatic.com/hang.woff2)"); document.fonts.add(f); f.load(); });' +
+      '</script></head><body>text</body></html>';
+    const print = resumedPrinter({
+      timeoutMs: 2_000,
+      args: [`--proxy-server=127.0.0.1:${port}`, '--proxy-bypass-list=<-loopback>'],
+      onBrowser: (b) => launched.push(b),
+    });
+    const heldBefore = held.length;
+    const started = Date.now();
+    const error = await print(html, {} as never).then(() => undefined, (e: unknown) => e as Error);
+    expect(error).toBeInstanceOf(Error);
+    expect(error!.message).not.toMatch(/Navigation timeout/); // setContent finished; the font wait timed out
+    expect(Date.now() - started).toBeLessThan(10_000);
+    expect(held.length).toBeGreaterThan(heldBefore);
+    expect(launched).toHaveLength(1);
+    expect(await exited(launched[0]!.process()!.pid!)).toBe(true);
+  }, 30_000);
+
   it('successful print: the browser is closed too', async () => {
     const print = resumedPrinter({ onBrowser: (b) => launched.push(b) });
     const api = new Api(freshLibrary('primary.input.json'), probeRenderer({ base: { print } }));

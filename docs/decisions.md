@@ -41,3 +41,20 @@ Each entry records the choice, the alternative, the change (commit), the check (
   - The adapter injects it before `</head>`, so preview and print get the same HTML. Overflow is still 4 pages; Security and Platform still 1 page each; the approved goldens are unchanged.
   - New checks: no text baseline inside the 36 pt margins (top of pages 2+, bottom of every page), and every highlight whole on one page.
   - Planted faults: removing the stylesheet fails the margin check (text at 780 pt), and removing only the keep-together rule fails the split check (Case 10).
+
+## Phase 3 Codex review (session `rb-phase3-code`)
+
+**Round 1:** 3 blockers, 2 improvements, all addressed.
+
+1. **Phone number blocked export (BLOCKER).**
+   - Even renders `basics.phone` as `<a href="tel:…">`, and the runtime policy refused it: any saved phone made preview and PDF export return `409`.
+   - The same applied to `irc:`/`ircs:`/`xmpp:` links in bullets, which micromark keeps.
+   - Fix: `neutralizeLinks` (src/render/policy.ts) blanks every `<a href>` outside http/https/mailto to `href=""`, splicing only that attribute by its parse5 source position, before the policy check. This is SPEC §3.5 rule 3 ("must be neutralized"), now worded to say which layer does it. The phone prints as text and is no longer a clickable `tel:` link.
+   - While checking this: Even prints `basics.url` without its scheme and trailing slash, so the printed-bullet contact multiset now compares the URL in that display form (a theme formatting rule, like dates).
+   - Tests: `tests/phase3/contacts-links.test.ts` (API: phone and url in preview and PDF; a bullet with irc/xmpp links) and unit tests in render.test.ts.
+2. **Font wait escaped the D20 timeout (BLOCKER).** `resumed.pdf` awaits `page.evaluate(() => document.fonts.ready)`, which only the CDP `protocolTimeout` (default 180 s) bounds. The launch wrapper now sets `protocolTimeout` to the session timeout. Regression: a page whose font load starts after `load` and never finishes must fail within the timeout, not with a navigation timeout, and must leave no Chrome.
+3. **A missing golden left the gate green (BLOCKER).** `readGolden` now throws with the missing path, and the PDF gate and self-test 3 always run the full-text check.
+4. **Line order depended on content-stream order (IMPROVE).** The pairwise same-line comparator was not transitive. `groupLines` now sorts by baseline, groups against each line's first baseline, then sorts by x. A permutation test covers it; the approved goldens are unchanged.
+5. **Candidate generator could overwrite approved goldens (IMPROVE).** It compares real paths against the actual fixture directory, and writes with `wx`.
+
+Planted faults: removing neutralization, `protocolTimeout`, the new sort, or the Security golden each fails tests; the generator refuses a symlink to `fixtures/` and an existing file.

@@ -9,8 +9,8 @@ export type Element = T.Element;
  * `scripting` selects how <noscript> content is parsed: as raw text (a browser
  * with JavaScript on, like the printer) or as markup (the sandboxed preview).
  */
-export function parseHtml(html: string, scripting = true): T.Document {
-  return parse(html, { scriptingEnabled: scripting });
+export function parseHtml(html: string, scripting = true, locations = false): T.Document {
+  return parse(html, { scriptingEnabled: scripting, sourceCodeLocationInfo: locations });
 }
 
 const isElement = (node: T.Node): node is T.Element => 'tagName' in node;

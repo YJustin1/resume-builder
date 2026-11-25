@@ -157,7 +157,7 @@ The rules below are based on this behaviour of the pinned renderer, verified in 
      A violation returns `409 CONTENT_POLICY_VIOLATION`, naming the element, and **the printer is never invoked**. This guards against stored data that bypassed write validation (e.g. older rows or direct SQL).
    - Theme assets (web fonts) are the only network loads.
 2. **URL fields** (`basics.url`; work and project `url`; education items have no URL in the MVP, by owner decision) must pass the schema `uri` format **and** use the `http:` or `https:` scheme; anything else is `400 INVALID_INPUT`.
-3. **Links inside text.** Inline Markdown links are allowed (schema #600). Only `http:`, `https:` and `mailto:` targets may appear as non-empty `href` values in the printed HTML. Other schemes must be neutralized; the renderer does this, and a test asserts it.
+3. **Links inside text.** Inline Markdown links are allowed (schema #600). Only `http:`, `https:` and `mailto:` targets may appear as non-empty `href` values in the printed HTML. Other schemes must be neutralized; the renderer does this, and a test asserts it. Even blanks `javascript:`, `data:` and `ftp:` links itself; the render adapter blanks the ones Even keeps (its `tel:` phone link, and `irc:`/`ircs:`/`xmpp:` links in user text) to `href=""`, keeping the link text, before the runtime policy runs.
 4. **Preview isolation.** The preview is served in an `<iframe sandbox>` with neither `allow-scripts` nor `allow-same-origin`, and the preview response carries `Content-Security-Policy: default-src 'none'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data:`.
 
 **T26** (`text-handling.expected.json`) verifies rules 1–3 against the pinned renderer.

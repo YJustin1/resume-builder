@@ -36,6 +36,28 @@ function anchorAllowed(href: string): boolean {
   return url !== null && ANCHOR_SCHEMES.has(url.protocol);
 }
 
+/**
+ * §3.5 rule 3: "other schemes must be neutralized". Even already blanks
+ * javascript:, data: and ftp: links, but keeps tel: (its phone contact link)
+ * and the irc:, ircs: and xmpp: links micromark allows in user text. Each such
+ * href is replaced with href="", keeping the link text, so a saved phone
+ * number or chat link prints as text instead of blocking export. The exact
+ * attribute is spliced out by source position; nothing else in the theme's
+ * HTML changes. The policy check below still runs afterwards as the backstop.
+ */
+export function neutralizeLinks(html: string): string {
+  const spans: { start: number; end: number }[] = [];
+  for (const el of elements(parseHtml(html, true, true))) {
+    if (el.tagName !== 'a') continue;
+    const href = el.attrs.find((a) => a.name === 'href');
+    const at = el.sourceCodeLocation?.attrs?.href;
+    if (href && at && !anchorAllowed(href.value)) spans.push({ start: at.startOffset, end: at.endOffset });
+  }
+  let out = html;
+  for (const { start, end } of spans.sort((a, b) => b.start - a.start)) out = out.slice(0, start) + 'href=""' + out.slice(end);
+  return out;
+}
+
 /** The first violation, described by element (and attribute), or null when the document is allowed. */
 export function contentPolicyViolation(html: string): string | null {
   // Checked under both <noscript> parsings: the printer runs with JavaScript on,

@@ -1,7 +1,7 @@
 // Rendering adapter (SPEC §3.2 steps 2–5). One interface for the HTML preview
 // and the PDF export, so both use the same rendering of the same document:
 //
-//   resume ──backend.html──▶ HTML ──+print stylesheet──content policy──▶ preview
+//   resume ──backend.html──▶ HTML ──neutralize links, +print stylesheet──content policy──▶ preview
 //                                        └──backend.print──▶ PDF bytes ──pdf.js──▶ page count
 //
 // The backend (resumed.render + Even, resumed.pdf + Puppeteer) can be replaced
@@ -14,7 +14,7 @@ import { pdf as resumedPdf, render as resumedRender } from 'resumed';
 import { ServiceError } from '../core/errors.ts';
 import type { JsonResume } from '../core/assemble.ts';
 import { countPages } from './pages.ts';
-import { enforceContentPolicy } from './policy.ts';
+import { enforceContentPolicy, neutralizeLinks } from './policy.ts';
 import { printSessions, type PrintSession } from './puppeteer-tracked.ts';
 import type { Browser } from 'puppeteer';
 
@@ -108,7 +108,7 @@ export function createRenderer(overrides: Partial<RenderBackend> = {}): Renderer
       throw renderFailed('rendering the resume to HTML failed', error);
     }
     if (typeof html !== 'string' || html.trim() === '') throw renderFailed('the theme produced no HTML', html);
-    const page = withPrintStylesheet(html);
+    const page = withPrintStylesheet(neutralizeLinks(html));
     enforceContentPolicy(page);
     return page;
   }
