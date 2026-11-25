@@ -182,4 +182,6 @@ The last row is an equivalent mutant, not a gap: `lstat` never reports `isFile()
 - NFKC added to the extractor;
 - printer errors no longer mapped to `RENDER_FAILED`.
 
-**Check:** `npm run check` gives 254 passed, 4 todo. The todos are the three full-text goldens and self-test 3, all awaiting owner review of the candidates.
+**Goldens:** the owner asked for "a codex audit [to] confirm" the candidates. Codex (`results` phase, session `rb-phase3-goldens`) found no blockers and one note: two Platform fields Even does not print. The owner then approved all three files (fixtures/README.md change log).
+
+**Check:** `npm run check` gives 255 passed, 0 todo.

@@ -46,3 +46,8 @@ Experience and project IDs share one namespace (one `entries` table in the datab
   - Reason: EVALUATION.md §9 (Projects and skills requirements; bullet-to-employer ordering; required overflow warning).
 - **v2 approval (2026-11-24):** the owner approved every v2 fixture file listed above. The `<case>.pdf.text.txt` goldens do not exist yet; each still needs its own owner review when it is created in Phase 3.
 - **Phase 2 (2026-11-24):** added the missing `"status": 200` to the first (impact) step of T09c in `primary-mutations.expected.json`. Authoring omission found when the HTTP runner first ran; no expected value changed.
+- **Phase 3 (2026-11-24):** added `security.pdf.text.txt` (T11), `overflow.pdf.text.txt` (T12) and `sections.pdf.text.txt` (T23).
+  - Generated with `node tests/tools/candidate-goldens.ts <scratch-dir>`.
+  - A Codex audit (session `rb-phase3-goldens`, one round) checked every segment against the expected JSON, the input selections and Even's template, and found no blockers. Its one note is recorded in the header of `sections.pdf.text.txt`.
+  - The owner approved all three on that audit; each file carries an `# Approved:` line.
+  - No other fixture changed.

@@ -1,0 +1,152 @@
+# Full-text golden for T12 (r-overflow; SPEC §7.3 "Approved full-text check").
+# One segment per visual line of the position-ordered extraction; the golden text is the segments joined by single spaces.
+# Generated with resumed 7.1.0, jsonresume-theme-even 0.27.0, puppeteer 25.18.1, Google Chrome 158.0.8127.37, pdfjs-dist 6.5.438; 4 page(s).
+# Approved: yjustin (owner), 2026-11-24, after Codex audit rb-phase3-goldens (no blockers); resumed 7.1.0 + jsonresume-theme-even 0.27.0, Chrome 158.0.8127.37
+Sample Candidate
+sample@example.com
+Work Test Analyst
+Overflow Lab
+Case 01: Reviewed the synthetic report, documented the validation findings, and
+communicated the results to the review team for reproducible followup and
+independent verification.
+Case 02: Reviewed the synthetic report, documented the validation findings, and
+communicated the results to the review team for reproducible followup and
+independent verification.
+Case 03: Reviewed the synthetic report, documented the validation findings, and
+communicated the results to the review team for reproducible followup and
+independent verification.
+Case 04: Reviewed the synthetic report, documented the validation findings, and
+communicated the results to the review team for reproducible followup and
+independent verification.
+Case 05: Reviewed the synthetic report, documented the validation findings, and
+communicated the results to the review team for reproducible followup and
+independent verification.
+Case 06: Reviewed the synthetic report, documented the validation findings, and
+communicated the results to the review team for reproducible followup and
+independent verification.
+Case 07: Reviewed the synthetic report, documented the validation findings, and
+communicated the results to the review team for reproducible followup and
+independent verification.
+Case 08: Reviewed the synthetic report, documented the validation findings, and
+communicated the results to the review team for reproducible followup and
+independent verification.
+Case 09: Reviewed the synthetic report, documented the validation findings, and
+communicated the results to the review team for reproducible followup and
+independent verification.
+Case 10: Reviewed the synthetic report, documented the validation findings, and
+communicated the results to the review team for reproducible followup and
+independent verification.
+Case 11: Reviewed the synthetic report, documented the validation findings, and
+communicated the results to the review team for reproducible followup and
+independent verification.
+Case 12: Reviewed the synthetic report, documented the validation findings, and
+communicated the results to the review team for reproducible followup and
+independent verification.
+Case 13: Reviewed the synthetic report, documented the validation findings, and
+communicated the results to the review team for reproducible followup and
+independent verification.
+Case 14: Reviewed the synthetic report, documented the validation findings, and
+communicated the results to the review team for reproducible followup and
+independent verification.
+Case 15: Reviewed the synthetic report, documented the validation findings, and
+communicated the results to the review team for reproducible followup and
+independent verification.
+Case 16: Reviewed the synthetic report, documented the validation findings, and
+communicated the results to the review team for reproducible followup and
+independent verification.
+Case 17: Reviewed the synthetic report, documented the validation findings, and
+communicated the results to the review team for reproducible followup and
+independent verification.
+Case 18: Reviewed the synthetic report, documented the validation findings, and
+communicated the results to the review team for reproducible followup and
+independent verification.
+Case 19: Reviewed the synthetic report, documented the validation findings, and
+communicated the results to the review team for reproducible followup and
+independent verification.
+Case 20: Reviewed the synthetic report, documented the validation findings, and
+communicated the results to the review team for reproducible followup and
+independent verification.
+Case 21: Reviewed the synthetic report, documented the validation findings, and
+communicated the results to the review team for reproducible followup and
+independent verification.
+Case 22: Reviewed the synthetic report, documented the validation findings, and
+communicated the results to the review team for reproducible followup and
+independent verification.
+Case 23: Reviewed the synthetic report, documented the validation findings, and
+communicated the results to the review team for reproducible followup and
+independent verification.
+Case 24: Reviewed the synthetic report, documented the validation findings, and
+communicated the results to the review team for reproducible followup and
+independent verification.
+Case 25: Reviewed the synthetic report, documented the validation findings, and
+communicated the results to the review team for reproducible followup and
+independent verification.
+Case 26: Reviewed the synthetic report, documented the validation findings, and
+communicated the results to the review team for reproducible followup and
+independent verification.
+Case 27: Reviewed the synthetic report, documented the validation findings, and
+communicated the results to the review team for reproducible followup and
+independent verification.
+Case 28: Reviewed the synthetic report, documented the validation findings, and
+communicated the results to the review team for reproducible followup and
+independent verification.
+Case 29: Reviewed the synthetic report, documented the validation findings, and
+communicated the results to the review team for reproducible followup and
+independent verification.
+Case 30: Reviewed the synthetic report, documented the validation findings, and
+communicated the results to the review team for reproducible followup and
+independent verification.
+Case 31: Reviewed the synthetic report, documented the validation findings, and
+communicated the results to the review team for reproducible followup and
+independent verification.
+Case 32: Reviewed the synthetic report, documented the validation findings, and
+communicated the results to the review team for reproducible followup and
+independent verification.
+Case 33: Reviewed the synthetic report, documented the validation findings, and
+communicated the results to the review team for reproducible followup and
+independent verification.
+Case 34: Reviewed the synthetic report, documented the validation findings, and
+communicated the results to the review team for reproducible followup and
+independent verification.
+Case 35: Reviewed the synthetic report, documented the validation findings, and
+communicated the results to the review team for reproducible followup and
+independent verification.
+Case 36: Reviewed the synthetic report, documented the validation findings, and
+communicated the results to the review team for reproducible followup and
+independent verification.
+Case 37: Reviewed the synthetic report, documented the validation findings, and
+communicated the results to the review team for reproducible followup and
+independent verification.
+Case 38: Reviewed the synthetic report, documented the validation findings, and
+communicated the results to the review team for reproducible followup and
+independent verification.
+Case 39: Reviewed the synthetic report, documented the validation findings, and
+communicated the results to the review team for reproducible followup and
+independent verification.
+Case 40: Reviewed the synthetic report, documented the validation findings, and
+communicated the results to the review team for reproducible followup and
+independent verification.
+Case 41: Reviewed the synthetic report, documented the validation findings, and
+communicated the results to the review team for reproducible followup and
+independent verification.
+Case 42: Reviewed the synthetic report, documented the validation findings, and
+communicated the results to the review team for reproducible followup and
+independent verification.
+Case 43: Reviewed the synthetic report, documented the validation findings, and
+communicated the results to the review team for reproducible followup and
+independent verification.
+Case 44: Reviewed the synthetic report, documented the validation findings, and
+communicated the results to the review team for reproducible followup and
+independent verification.
+Case 45: Reviewed the synthetic report, documented the validation findings, and
+communicated the results to the review team for reproducible followup and
+independent verification.
+Case 46: Reviewed the synthetic report, documented the validation findings, and
+communicated the results to the review team for reproducible followup and
+independent verification.
+Case 47: Reviewed the synthetic report, documented the validation findings, and
+communicated the results to the review team for reproducible followup and
+independent verification.
+Case 48: Reviewed the synthetic report, documented the validation findings, and
+communicated the results to the review team for reproducible followup and
+independent verification.

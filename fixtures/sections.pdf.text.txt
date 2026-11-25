@@ -1,0 +1,22 @@
+# Full-text golden for T23 (r-platform; SPEC §7.3 "Approved full-text check").
+# One segment per visual line of the position-ordered extraction; the golden text is the segments joined by single spaces.
+# Generated with resumed 7.1.0, jsonresume-theme-even 0.27.0, puppeteer 25.18.1, Google Chrome 158.0.8127.37, pdfjs-dist 6.5.438; 1 page(s).
+# Not printed by Even (template, not a defect): projects[0].url appears only as the href of the "Ledger Tool" link; skills[1].level ("Intermediate") has no printed form.
+# Approved: yjustin (owner), 2026-11-24, after Codex audit rb-phase3-goldens (no blockers); resumed 7.1.0 + jsonresume-theme-even 0.27.0, Chrome 158.0.8127.37
+Sample Candidate
+Software Engineer
+sample@example.com
+Work Platform Intern
+Lakeside Systems
+Jun 2024 – Aug 2024
+Wrote runbooks for the internal deployment platform.
+Migrated build pipelines to a shared container base image.
+Education Sample University
+BS in Computer Science
+Aug 2021 – May 2025
+Projects Ledger Tool
+Jan 2024 – Present
+Implemented double-entry validation for household budgets.
+Added CSV import with schema checks.
+Skills TypeScript SQL
+Node.js React
