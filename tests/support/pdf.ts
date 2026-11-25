@@ -219,14 +219,20 @@ export function listItems(html: string): string[] {
 /**
  * §7.3: after the leading contact items (as a multiset, the expected document's
  * present basics.email / phone / url), the <li> texts of the printed HTML must
- * equal exactly the work highlights then the project highlights, in order.
+ * equal exactly the work highlights, then the project highlights, then the
+ * skill keywords (skill by skill), in order.
+ *
+ * PENDING OWNER APPROVAL: the skill keywords. SPEC §7.3 says Even renders
+ * skills without <li>, but Even 0.27.0 renders each skill keyword as <li>
+ * (ul.tag-list), which T23 exercises.
  */
 export function printedBulletProblems(printedHtml: string, expectedDoc: any): string[] {
   const items = listItems(printedHtml);
   const contacts = ['email', 'phone', 'url'].map((k) => expectedDoc.basics?.[k]).filter((v): v is string => typeof v === 'string');
-  const highlights = [...(expectedDoc.work ?? []), ...(expectedDoc.projects ?? [])]
-    .flatMap((e: any) => e.highlights ?? [])
-    .map(normalizeText);
+  const highlights = [
+    ...[...(expectedDoc.work ?? []), ...(expectedDoc.projects ?? [])].flatMap((e: any) => e.highlights ?? []),
+    ...(expectedDoc.skills ?? []).flatMap((s: any) => s.keywords ?? []),
+  ].map(normalizeText);
   const problems: string[] = [];
   const leading = items.slice(0, contacts.length);
   const sortJson = (a: string[]) => JSON.stringify([...a].map(normalizeText).sort());
