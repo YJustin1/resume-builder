@@ -1,8 +1,9 @@
 // Phase 1 gate, service level: the step-sequence fixtures.
-// Every step's status, code and affected resumes are checked now, and every
-// rejected step must leave all rows unchanged. Assertions that need the
-// assembler (Phase 2) or the renderer (Phase 3) are listed as todo, never
-// silently skipped.
+// Every step's status, code and affected resumes are checked here, and every
+// rejected step must leave all rows unchanged. Steps and assertions that need
+// assembly, HTTP or the renderer (expected exports, expectedImpact, printed
+// HTML, PDF text, the direct-SQL runtime policy step) are checked on the same
+// fixtures by tests/phase2/fixtures-http.test.ts.
 
 import { describe, expect, it } from 'vitest';
 import { dumpRows, freshLibrary, readFixture, recordExists, runStep } from '../support/harness.ts';
@@ -18,7 +19,7 @@ interface StepCase {
 const FILES: [string, (c: StepCase) => boolean][] = [
   ['primary-mutations.expected.json', () => true],
   ['sections-mutations.expected.json', () => true],
-  ['text-handling.expected.json', (c) => Array.isArray(c.steps)], // T26; T16/T16b are Phase 3
+  ['text-handling.expected.json', (c) => Array.isArray(c.steps)], // T26; T16/T16b have no steps (HTTP tests)
 ];
 
 for (const [file, include] of FILES) {
@@ -30,7 +31,7 @@ for (const [file, include] of FILES) {
         c.steps.forEach((step, i) => {
           const before = dumpRows(lib.db);
           const result = runStep(lib, step);
-          if (result.deferred) return; // reported by the todo entry below
+          if (result.deferred) return; // checked by tests/phase2/fixtures-http.test.ts
           const where = `${c.case} step ${i + 1} (${step.action})`;
           expect(result.status, where).toBe(step.status);
           if (step.code) expect(result.code, where).toBe(step.code);
@@ -51,7 +52,6 @@ for (const [file, include] of FILES) {
         for (const id of c.recordsAbsent ?? []) expect(recordExists(lib, id), id).toBe(false);
         for (const id of c.recordsStillPresent ?? []) expect(recordExists(lib, id), id).toBe(true);
       });
-      it.todo(`${c.case} export and impact assertions (Phase 2/3: expected exports, expectedImpact, rendered output)`);
     }
   });
 }

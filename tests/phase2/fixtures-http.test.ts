@@ -1,9 +1,10 @@
 // Phase 2 gate: every fixture through the HTTP API, with exact expected exports
-// and impact sets. Rendering assertions (Phase 3) are listed as todo.
+// and impact sets. Since Phase 3 the same run also checks the printed-HTML and
+// PDF assertions (T16, T16b, T26) through the real renderer.
 
 import { describe, expect, it } from 'vitest';
 import { dumpRows, freshLibrary, readFixture, recordExists } from '../support/harness.ts';
-import { Api, checkStep, expectExports, resolveExpected } from '../support/http.ts';
+import { Api, checkStep, expectExports, expectPrinted, resolveExpected } from '../support/http.ts';
 
 const LIBRARY_TABLES = ['profile', 'entries', 'accomplishments', 'variants', 'skills'] as const;
 const library = (rows: Record<string, unknown[]>) => Object.fromEntries(LIBRARY_TABLES.map((t) => [t, rows[t]]));
@@ -48,24 +49,25 @@ for (const file of ['primary-mutations.expected.json', 'sections-mutations.expec
   });
 }
 
-describe('text-handling.expected.json (JSON part)', () => {
+describe('text-handling.expected.json', () => {
   const fixture = readFixture('text-handling.expected.json');
   for (const c of fixture.cases) {
     if (Array.isArray(c.steps)) {
-      it(`${c.case} write and JSON steps`, async () => {
-        const deferred = await runCase(fixture.input, c);
-        expect(deferred.every((d) => d.includes('Phase 3'))).toBe(true);
-      });
-      it.todo(`${c.case} printed HTML, PDF and direct-SQL runtime policy (Phase 3)`);
+      it(`${c.case} write, JSON, printed-HTML, PDF and direct-SQL runtime policy steps`, async () => {
+        expect(await runCase(fixture.input, c)).toEqual([]);
+      }, 60_000);
     } else {
-      it(`${c.case} JSON keeps the text exactly as entered`, async () => {
+      it(`${c.case} JSON keeps the text exactly as entered; preview and PDF per the fixture`, async () => {
         const api = new Api(freshLibrary(fixture.input));
         const res = await api.call('PATCH', `/api/variants/${c.edit.id}`, { text: c.edit.text });
         expect(res.status).toBe(200);
         const doc = (await api.exportJson('r-security')).body;
         expect(doc.work[0].highlights).toContain(c.expectedJsonHighlight);
-      });
-      it.todo(`${c.case} printed text (Phase 3)`);
+        await expectPrinted(api, 'r-security', c, c.case);
+        const preview = await api.app.request('/api/resumes/r-security/preview');
+        const html = await preview.text();
+        for (const s of c.htmlMustNotContain ?? []) expect(html, `${c.case}: preview`).not.toContain(s);
+      }, 60_000);
     }
   }
 });
