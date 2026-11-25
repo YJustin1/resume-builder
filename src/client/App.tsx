@@ -3,7 +3,7 @@
 // draft survives a visit to the library.
 
 import { useCallback, useEffect, useState } from 'react';
-import { api, type LibraryData } from './api.ts';
+import { api, ApiError, type LibraryData } from './api.ts';
 import { LibraryView } from './LibraryView.tsx';
 import { ResumesView } from './ResumesView.tsx';
 import { ProblemBox, problemOf, PromptProvider, type Problem } from './ui.tsx';
@@ -20,12 +20,23 @@ export function App() {
   const [version, setVersion] = useState(0);
 
   const refresh = useCallback(async () => {
-    try {
-      setLibrary(await api.library());
-      setVersion((v) => v + 1);
-      setProblem(null);
-    } catch (error) {
-      setProblem(problemOf(error));
+    // `npm run dev` answers 503 API_STARTING until the API is up: keep trying
+    // for a while instead of leaving an opened page stuck (review round 3, 13).
+    for (let attempt = 0; ; attempt++) {
+      try {
+        setLibrary(await api.library());
+        setVersion((v) => v + 1);
+        setProblem(null);
+        return;
+      } catch (error) {
+        if (error instanceof ApiError && error.code === 'API_STARTING' && attempt < 60) {
+          setProblem({ message: 'The local API server is starting…' });
+          await new Promise((r) => setTimeout(r, 500));
+          continue;
+        }
+        setProblem(problemOf(error));
+        return;
+      }
     }
   }, []);
 
@@ -67,7 +78,7 @@ export function App() {
               <LibraryView library={library} refresh={refresh} />
             </div>
             <div hidden={view !== 'resumes'}>
-              <ResumesView library={library} libraryVersion={version} refresh={refresh} onDirtyChange={setDirty} />
+              <ResumesView library={library} libraryVersion={version} active={view === 'resumes'} refresh={refresh} onDirtyChange={setDirty} />
             </div>
           </>
         )}

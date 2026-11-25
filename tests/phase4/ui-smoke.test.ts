@@ -17,7 +17,8 @@ import type { Library } from '../../src/db/library.ts';
 import { createApp, UI_CSP } from '../../src/server/app.ts';
 import { freshLibrary, readFixture } from '../support/harness.ts';
 
-const STEP = 60_000;
+// Generous: PDF rendering under a loaded machine can take tens of seconds.
+const STEP = 150_000;
 let dir: string;
 let lib: Library;
 let server: ServerType;
@@ -60,7 +61,7 @@ afterAll(async () => {
 const button = (name: string) => page.locator(`::-p-aria([name="${name}"][role="button"])`);
 const textbox = (name: string) => page.locator(`::-p-aria([name="${name}"][role="textbox"])`);
 const combobox = (name: string) => page.locator(`::-p-aria([name="${name}"][role="combobox"])`);
-const waitForText = (text: string) => page.waitForFunction((t) => document.body.innerText.includes(t), { timeout: 30_000 }, text);
+const waitForText = (text: string) => page.waitForFunction((t) => document.body.innerText.includes(t), { timeout: 90_000 }, text);
 /** The UI shortens long labels the same way (LibraryView). */
 const short = (t: string) => (t.length > 50 ? `${t.slice(0, 47)}…` : t);
 async function waitForFile(path: string) {
@@ -114,6 +115,35 @@ describe('UI smoke test (built client, real API, headless Chrome)', () => {
     expect(res?.headers()['content-security-policy']).toBe(UI_CSP);
     await waitForText('Shared library');
     await waitForText('Northwind Lab');
+  }, STEP);
+
+  it('recovers when the API is still starting (503 API_STARTING from the dev launcher) (review round 3, 13)', async () => {
+    let refused = 0;
+    const onRequest = async (req: import('puppeteer').HTTPRequest) => {
+      if (refused < 2 && new URL(req.url()).pathname === '/api/library') {
+        refused++;
+        await req.respond({ status: 503, contentType: 'application/json', body: JSON.stringify({ error: { code: 'API_STARTING', message: 'The local API server is still starting.' } }) });
+        return;
+      }
+      await req.continue();
+    };
+    await page.setRequestInterception(true);
+    page.on('request', onRequest);
+    const logged = consoleErrors.length;
+    try {
+      await page.reload();
+      await waitForText('Northwind Lab');
+    } finally {
+      page.off('request', onRequest);
+      await page.setRequestInterception(false);
+    }
+    expect(refused).toBe(2);
+    // Chrome logs each deliberate 503; drop exactly those so the final console check stays strict.
+    const during = consoleErrors.splice(logged);
+    const expected503 = 'Failed to load resource: the server responded with a status of 503 (Service Unavailable)';
+    expect(during.filter((e) => e === expected503)).toHaveLength(2);
+    consoleErrors.push(...during.filter((e) => e !== expected503));
+    expect(await page.evaluate(() => document.body.innerText)).not.toContain('still starting');
   }, STEP);
 
   it('library creation: add a skill', async () => {
@@ -229,7 +259,7 @@ describe('UI smoke test (built client, real API, headless Chrome)', () => {
       await waitForText('Rendering PDF…');
       expect(await isDisabled(ariaButton('Security'))).toBe(true); // the warning cannot end up under another resume
       held.release('GET /api/resumes/r-overflow/export/pdf');
-      await page.waitForFunction(() => /Warning: this PDF is \d+ pages long\./.test(document.body.innerText), { timeout: 45_000 });
+      await page.waitForFunction(() => /Warning: this PDF is \d+ pages long\./.test(document.body.innerText), { timeout: 120_000 });
     } finally {
       await held.stop();
     }
@@ -264,6 +294,29 @@ describe('UI smoke test (built client, real API, headless Chrome)', () => {
     expect(text).not.toContain('PDF exported');
     expect(text).not.toContain('Rendering PDF…');
     expect(await isDisabled(ariaButton('Overflow'))).toBe(false);
+  }, STEP);
+
+  it('leaving the Resumes view during an export cancels it: no unseen download, warning or error (review round 3, 10)', async () => {
+    await page.goto(`${base}/#/resumes`);
+    await button('Engineering').click();
+    await waitForText('Harbor Studio');
+    const held = await hold(['GET /api/resumes/r-engineering/export/pdf']);
+    try {
+      await button('Download PDF').click();
+      await waitForText('Rendering PDF…');
+      await page.goto(`${base}/#/library`); // no edit: just look at the library
+      await waitForText('Shared library');
+      held.release('GET /api/resumes/r-engineering/export/pdf');
+      await new Promise((r) => setTimeout(r, 2000));
+    } finally {
+      await held.stop();
+    }
+    expect(readdirSync(join(dir, 'downloads'))).not.toContain('resume-r-engineering.pdf');
+    await page.goto(`${base}/#/resumes`);
+    const text = await page.evaluate(() => document.body.innerText);
+    expect(text).not.toMatch(/PDF exported|Rendering PDF…|Warning: this PDF/);
+    expect(await isDisabled(ariaButton('Security'))).toBe(false);
+    expect(await isDisabled(ariaButton('Download PDF'))).toBe(false); // later exports still work
   }, STEP);
 
   it('a pending profile save locks the profile form (review, 11)', async () => {

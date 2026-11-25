@@ -41,8 +41,12 @@ type ResumedResume = Parameters<typeof resumedRender>[0];
 type ResumedTheme = Parameters<typeof resumedRender>[1];
 const theme = even as unknown as ResumedTheme;
 
-/** D20: launch, page load, font wait and print each give up after this long. */
-export const PRINT_TIMEOUT_MS = 15_000;
+/**
+ * D20: launch, page load, font wait and print each give up after this long.
+ * RB_PRINT_TIMEOUT_MS overrides it (the test suite raises it, because many
+ * parallel Chrome instances on a loaded machine are slower than one print).
+ */
+export const PRINT_TIMEOUT_MS = Number(process.env.RB_PRINT_TIMEOUT_MS) || 15_000;
 const TRACKED_PUPPETEER = new URL('./puppeteer-tracked.ts', import.meta.url).href;
 
 export interface PrinterOptions {

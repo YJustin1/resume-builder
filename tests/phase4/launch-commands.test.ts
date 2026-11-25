@@ -111,7 +111,9 @@ describe('npm run dev (src/server/dev.ts)', () => {
     const root = makeRoot();
     const { uiPort, apiPort, run } = await devRun(root);
     await waitFor(run, new RegExp(`Local:\\s+http://127\\.0\\.0\\.1:${uiPort}/`));
-    await waitFor(run, new RegExp(`listening on http://127\\.0\\.0\\.1:${apiPort}`));
+    // The UI URL is announced only after the API has bound (review round 3, 13).
+    expect(run.output().indexOf(`listening on http://127.0.0.1:${apiPort}`)).toBeGreaterThan(-1);
+    expect(run.output().indexOf(`listening on http://127.0.0.1:${apiPort}`)).toBeLessThan(run.output().search(/Local:\s+http/));
     expect(existsSync(join(root, '.data', 'library.sqlite'))).toBe(true);
     expect(await (await fetch(`http://127.0.0.1:${uiPort}/`)).text()).toContain('id="root"');
     const profile = await fetch(`http://127.0.0.1:${uiPort}/api/profile`);
@@ -139,7 +141,29 @@ describe('npm run dev (src/server/dev.ts)', () => {
     const root = makeRoot();
     await expectRefusal(root, { DB_PATH: join(REPO, 'src', 'client', 'personal.db') });
     await expectRefusal(root, { DB_PATH: join(REPO, 'node_modules', 'personal.db') });
+    await expectRefusal(root, { DB_PATH: join(REPO, 'src', 'client', '..private.db') }); // a child whose name starts with ".."
     expect(existsSync(join(REPO, 'src', 'client', 'personal.db'))).toBe(false);
+    expect(existsSync(join(REPO, 'src', 'client', '..private.db'))).toBe(false);
+  }, 90_000);
+
+  it('a symlink inside the client directory never serves the database it points to (review round 3, 2)', async () => {
+    const root = makeRoot();
+    const db = join(root, 'personal.sqlite');
+    const { uiPort, apiPort, run } = await devRun(root, { DB_PATH: db });
+    await waitFor(run, new RegExp(`Local:\\s+http://127\\.0\\.0\\.1:${uiPort}/`));
+    expect((await fetch(`http://127.0.0.1:${uiPort}/api/profile`)).status).toBe(200); // the API created the database
+    const links = { 'innocent.txt': db, 'data-dir': join(root, '.data') };
+    for (const [name, target] of Object.entries(links)) {
+      symlinkSync(target, join(REPO, 'src', 'client', name));
+      cleanup.push(() => rmSync(join(REPO, 'src', 'client', name), { force: true }));
+    }
+    for (const path of ['/innocent.txt', `/@fs${join(REPO, 'src', 'client', 'innocent.txt')}`, '/innocent.txt?import', '/data-dir/library.sqlite']) {
+      const res = await fetch(`http://127.0.0.1:${uiPort}${path}`);
+      const body = Buffer.from(await res.arrayBuffer()).toString('latin1');
+      expect(body.startsWith('SQLite format 3'), path).toBe(false);
+      if (path !== '/data-dir/library.sqlite') expect(res.status, path).toBe(403);
+    }
+    expect(await listening(apiPort)).toBe(true);
   }, 90_000);
 
   it('another server already on the API port never answers through the proxy; the launcher exits nonzero (review, 12)', async () => {

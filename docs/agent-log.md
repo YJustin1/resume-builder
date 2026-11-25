@@ -247,4 +247,27 @@ Planted faults that failed tests: no editor lock; skipping the prompt when no re
 
 Planted faults: removing the served-directory refusal, the API gate, `publicDir: false`, the export lock, the abort, or the profile lock each fails a test.
 
-**Check:** `npm run check` gives 351 passed, 0 todo; the smoke test passed 3 of 3 reruns.
+**Check:** `npm run check` gave 351 passed, 0 todo; the smoke test passed 3 of 3 reruns.
+
+**Codex review round 3 (the cap):** 2 blockers and 2 improvements, all fixed. **None of these fixes is verified by the reviewer**, because the cap allows no fourth round.
+
+- **2. Database boundary gaps (BLOCKER).**
+  - The containment check misread a child named `..private.db` as outside the directory; it is now component-wise.
+  - A symlink inside the client directory could lead Vite to the database. The launcher's middleware now resolves each requested file (`/@fs/…` or under the client root) through symlinks and returns 403 for the database, its sidecars, or anything under `.data/`/`.demo/`.
+  - The served directories come from one module (`src/server/served.ts`), shared by the Vite config and the launcher.
+- **10. Leaving the Resumes view could hide a PDF warning or error (BLOCKER).** Leaving the view now cancels any pending preview or export: no unseen download, warning or error.
+- **9. The test copy wrote into the live `node_modules` (IMPROVE).** The copy now has its own `node_modules` directory of per-package links, so Vite's `.vite-temp` and dependency cache stay in the copy. The allow list includes the packages' real directories. Checked: during a test run, the only write to the live `node_modules` is Vitest bundling its own config, which an unrelated test file also does.
+- **13. A page opened during dev startup stayed stuck (IMPROVE).** The launcher prints the UI URL only after the API has bound, and the app retries the library load while it gets `503 API_STARTING`.
+
+Planted faults that fail tests: prefix-based containment, no resolved-file check, printing the URL before the API is ready, no cancel on leaving the view, no retry.
+
+**Suite stability on a loaded machine:**
+- Symptom: with other heavy work on the machine (a VM and games; load average 40–80 on 10 cores), timing-bounded tests failed at random, a different one each run. Each passes alone.
+- Changes, all test settings only:
+  - `vitest.config.ts` runs at most 4 files in parallel, with a 30 s default timeout;
+  - the suite sets `RB_PRINT_TIMEOUT_MS=60000` (a new override; the app default stays 15 s, and the D20 tests pass their own short timeouts);
+  - the smoke test's waits were widened;
+  - removing a test copy retries.
+- Result: 3 of 3 full runs passed while that load continued.
+
+**Check:** `npm run check` gives 354 passed, 0 todo, 3 of 3 runs.

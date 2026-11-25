@@ -14,10 +14,11 @@
 import { spawn, type ChildProcess } from 'node:child_process';
 import { once } from 'node:events';
 import { realpathSync } from 'node:fs';
-import { relative, isAbsolute } from 'node:path';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createServer, type Plugin, type ViteDevServer } from 'vite';
 import { PathError, REPO_ROOT, resolvePersonalDbPath } from './paths.ts';
+import { CLIENT_DIR, servedDirs, within } from './served.ts';
 
 const apiPort = Number(process.env.API_PORT ?? 5174);
 const refuse = (message: string): never => {
@@ -33,24 +34,53 @@ try {
   if (error instanceof PathError) refuse(error.message);
   throw error;
 }
-const served = ['../client', '../../node_modules'].map((p) => realpathSync(fileURLToPath(new URL(p, import.meta.url))));
-const within = (child: string, dir: string) => {
-  const r = relative(dir, child);
-  return r === '' || (!r.startsWith('..') && !isAbsolute(r));
-};
-for (const dir of served) {
+for (const dir of servedDirs()) {
   if (within(dbPath, dir)) refuse(`the database ${dbPath} is inside ${dir}, which the UI dev server serves; choose a DB_PATH elsewhere`);
 }
 
+/** The database, its SQLite sidecars, and the reserved data directories, as real paths. */
+const forbidden = [dbPath, `${dbPath}-journal`, `${dbPath}-wal`, `${dbPath}-shm`];
+const forbiddenDirs = [join(realpathSync(REPO_ROOT), '.data'), join(realpathSync(REPO_ROOT), '.demo')];
+const client = realpathSync(CLIENT_DIR);
+
+/** The file a request would read, resolved through any symlink, or null. */
+function resolvedTarget(url: string): string | null {
+  let path: string;
+  try {
+    path = decodeURIComponent(url.split(/[?#]/)[0]!);
+  } catch {
+    return null;
+  }
+  const file = path.startsWith('/@fs/') ? path.slice('/@fs'.length) : join(client, path);
+  try {
+    return realpathSync(file);
+  } catch {
+    return null; // nothing there to leak
+  }
+}
+
 let apiReady = false;
-const apiGate: Plugin = {
-  name: 'resume-builder-api-gate',
+const boundary: Plugin = {
+  name: 'resume-builder-dev-boundary',
   configureServer(server) {
     server.middlewares.use((req, res, next) => {
-      if (apiReady || !(req.url ?? '').startsWith('/api')) return next();
-      res.statusCode = 503;
-      res.setHeader('content-type', 'application/json');
-      res.end(JSON.stringify({ error: { code: 'API_STARTING', message: 'The local API server is still starting.' } }));
+      const url = req.url ?? '/';
+      if (url.startsWith('/api')) {
+        if (apiReady) return next();
+        res.statusCode = 503;
+        res.setHeader('content-type', 'application/json');
+        res.end(JSON.stringify({ error: { code: 'API_STARTING', message: 'The local API server is still starting.' } }));
+        return;
+      }
+      // Vite checks the requested path; a symlink inside a served directory could
+      // still lead to the database. Check the resolved file (review round 3, 2).
+      const target = resolvedTarget(url);
+      if (target && (forbidden.includes(target) || forbiddenDirs.some((d) => within(target, d)))) {
+        res.statusCode = 403;
+        res.end('Forbidden');
+        return;
+      }
+      next();
     });
   },
 };
@@ -79,14 +109,13 @@ process.on('exit', () => {
 });
 
 try {
-  vite = await createServer({ configFile: fileURLToPath(new URL('../../vite.config.ts', import.meta.url)), plugins: [apiGate] });
+  vite = await createServer({ configFile: fileURLToPath(new URL('../../vite.config.ts', import.meta.url)), plugins: [boundary] });
   await vite.listen();
 } catch (error) {
   process.stderr.write(`Refusing to start: the UI dev server could not start: ${(error as Error).message}\n`);
   await vite?.close().catch(() => undefined);
   process.exit(1);
 }
-vite.printUrls();
 // Vite installs its own SIGTERM handler that closes Vite and calls
 // process.exit() at once, which would race ours and skip waiting for the API.
 process.removeAllListeners('SIGTERM');
@@ -102,7 +131,10 @@ api.stdout!.on('data', (chunk: Buffer) => {
   process.stdout.write(chunk);
   if (apiReady) return;
   apiOut += chunk.toString();
-  if (apiOut.includes(bound)) apiReady = true; // our child bound the port: open the proxy
+  if (apiOut.includes(bound)) {
+    apiReady = true; // our child bound the port: open the proxy, then announce the UI
+    vite!.printUrls();
+  }
 });
 api.on('exit', (code, signal) => {
   if (stopping) return;

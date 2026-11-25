@@ -3,14 +3,12 @@
 // app is served by the API server itself (`npm run demo`, `--ui`).
 
 import { realpathSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
+import { CLIENT_DIR, servedDirs } from './src/server/served.ts';
 
 export const API_PORT = Number(process.env.API_PORT ?? 5174);
-// Real paths: Vite checks requests against resolved files (node_modules may be a symlink in test copies).
-const client = realpathSync(fileURLToPath(new URL('./src/client', import.meta.url)));
-const nodeModules = realpathSync(fileURLToPath(new URL('./node_modules', import.meta.url)));
+const client = realpathSync(CLIENT_DIR);
 
 export default defineConfig({
   root: client,
@@ -33,7 +31,7 @@ export default defineConfig({
     // including .data/library.sqlite), and deny database files anywhere.
     fs: {
       strict: true,
-      allow: [client, nodeModules],
+      allow: servedDirs(),
       deny: ['.env', '.env.*', '*.{crt,pem}', '**/.git/**', '**/*.sqlite', '**/*.sqlite-*', '**/.data/**', '**/.demo/**'],
     },
     // Host stays 127.0.0.1:<ui port> and Origin is the loopback UI origin, so the

@@ -55,7 +55,7 @@ describe('text-handling.expected.json', () => {
     if (Array.isArray(c.steps)) {
       it(`${c.case} write, JSON, printed-HTML, PDF and direct-SQL runtime policy steps`, async () => {
         expect(await runCase(fixture.input, c)).toEqual([]);
-      }, 60_000);
+      }, 180_000);
     } else {
       it(`${c.case} JSON keeps the text exactly as entered; preview and PDF per the fixture`, async () => {
         const api = new Api(freshLibrary(fixture.input));

@@ -267,10 +267,12 @@ function SkillsEditor({ library, draft, setDraft }: { library: LibraryData; draf
  * Preview and export for the saved resume. While a request is pending the
  * parent locks resume switching (onBusy), so its result and any page-count
  * warning appear under the resume that requested it. If the panel is
- * invalidated anyway (a library edit remounts it), the request is aborted:
- * nothing is downloaded and nothing stale is shown (Codex Phase 4 review, 10).
+ * invalidated anyway (a library edit remounts it), or the user leaves the
+ * Resumes view while it is pending, the request is aborted: nothing is
+ * downloaded and no result or error is left unseen (Codex Phase 4 review, 10).
  */
-function OutputPanel({ id, dirty, profileMissing, onBusy }: { id: string; dirty: boolean; profileMissing: boolean; onBusy: (busy: boolean) => void }) {
+function OutputPanel(props: { id: string; dirty: boolean; profileMissing: boolean; active: boolean; onBusy: (busy: boolean) => void }) {
+  const { id, dirty, profileMissing, active, onBusy } = props;
   const [preview, setPreview] = useState(0); // 0 hidden; otherwise a cache-busting counter
   const [pdf, setPdf] = useState<PdfExport | null>(null);
   const [problem, setProblem] = useState<Problem | null>(null);
@@ -278,10 +280,9 @@ function OutputPanel({ id, dirty, profileMissing, onBusy }: { id: string; dirty:
   // One controller per mount (StrictMode mounts twice in development).
   const aborter = useRef<AbortController | null>(null);
   useEffect(() => {
-    const controller = new AbortController();
-    aborter.current = controller;
+    aborter.current = new AbortController();
     return () => {
-      controller.abort();
+      aborter.current?.abort(); // the current one: leaving the view may have replaced it
       onBusy(false);
     };
   }, [onBusy]);
@@ -290,6 +291,14 @@ function OutputPanel({ id, dirty, profileMissing, onBusy }: { id: string; dirty:
     setPdf(null);
     setProblem(null);
   }, [id, dirty]);
+  // Leaving the view cancels pending work; a fresh controller serves later requests.
+  useEffect(() => {
+    if (active) return;
+    aborter.current?.abort();
+    aborter.current = new AbortController();
+    setBusy('');
+    onBusy(false);
+  }, [active, onBusy]);
 
   const run = async (what: string, f: (signal: AbortSignal) => Promise<void>) => {
     const signal = aborter.current!.signal;
@@ -358,7 +367,7 @@ function OutputPanel({ id, dirty, profileMissing, onBusy }: { id: string; dirty:
 
 // ---------------------------------------------------------------- view
 
-export function ResumesView(props: { library: LibraryData; libraryVersion: number; refresh: () => Promise<void>; onDirtyChange: (dirty: boolean) => void }) {
+export function ResumesView(props: { library: LibraryData; libraryVersion: number; active: boolean; refresh: () => Promise<void>; onDirtyChange: (dirty: boolean) => void }) {
   const { library, refresh, onDirtyChange } = props;
   const prompt = usePrompt();
   /**
@@ -556,7 +565,7 @@ export function ResumesView(props: { library: LibraryData; libraryVersion: numbe
             <SectionEditor library={library} sectionKey="projects" draft={draft} setDraft={setDraft} />
             <SkillsEditor library={library} draft={draft} setDraft={setDraft} />
             {/* Remounted per resume and per library version: no preview or result outlives the state that produced it (review, 6). */}
-            <OutputPanel key={`${saved.id}:${props.libraryVersion}`} id={saved.id} dirty={dirty} profileMissing={library.profile === null} onBusy={setOutputBusy} />
+            <OutputPanel key={`${saved.id}:${props.libraryVersion}`} id={saved.id} dirty={dirty} profileMissing={library.profile === null} active={props.active} onBusy={setOutputBusy} />
           </fieldset>
         )}
       </div>
