@@ -236,3 +236,15 @@ The owner then inspected the fresh Security, Overflow and Platform PDFs: "all th
 Planted faults that failed tests: no editor lock; skipping the prompt when no resume is affected; comma-separated lists; Vite's default CORS; Vite's default `fs`; API started before Vite. **Not caught:** keeping Vite's SIGTERM handler. With the exit hook in place, its only effect is an exit-code race (143 or 0); no orphan resulted in 2 whole-file runs or per-test runs.
 
 **Check:** `npm run check` gives 344 passed, 0 todo; the smoke and launch tests each passed 3 of 3 reruns.
+
+**Codex review round 2:** the round-1 fixes held. 3 new blockers and 2 improvements, all addressed.
+
+- **2. The dev server could still serve a database with an unusual name (BLOCKER).** `DB_PATH` may have any file name, such as `src/client/personal.db`, and Vite's public directory bypassed the deny list. `dev.ts` now resolves the database exactly as the API does (`resolvePersonalDbPath`) and exits 2 if it lies inside `src/client` or `node_modules`, the only served directories, whatever its name. `publicDir: false`.
+- **10. Switching resumes could swallow a PDF warning (BLOCKER).** A pending preview or export now also locks resume switching, so its result appears under the resume that requested it. If the panel is invalidated anyway (a library edit remounts it), the request is aborted: no download and no stale result.
+- **11. A pending profile save could lose newer edits (BLOCKER).** The profile form is locked from Save until the refresh. This also exposed a real bug: the "Profile saved." notice was lost when the refresh remounted the form, so it now lives in the parent.
+- **9. Tests touched the live checkout (IMPROVE).** The dev-server and launch tests now run from a temporary project copy (`tests/support/project-copy.ts`) with synthetic databases and a private Vite cache. Added §9 cases through the launcher: the `.demo/../.demo` spelling, a dangling `DB_PATH` symlink, and a database inside a served directory.
+- **12. The proxy was open before the API bound its port (IMPROVE).** `/api` answers 503 until this launcher's own API child prints its bound port. Test: an impostor server already on the API port is never reached through the proxy, and the launcher exits nonzero.
+
+Planted faults: removing the served-directory refusal, the API gate, `publicDir: false`, the export lock, the abort, or the profile lock each fails a test.
+
+**Check:** `npm run check` gives 351 passed, 0 todo; the smoke test passed 3 of 3 reruns.

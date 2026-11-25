@@ -2,16 +2,22 @@
 // /api URLs: in development Vite proxies them to the API server; the built
 // app is served by the API server itself (`npm run demo`, `--ui`).
 
+import { realpathSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 
 export const API_PORT = Number(process.env.API_PORT ?? 5174);
-const client = fileURLToPath(new URL('./src/client', import.meta.url));
-const nodeModules = fileURLToPath(new URL('./node_modules', import.meta.url));
+// Real paths: Vite checks requests against resolved files (node_modules may be a symlink in test copies).
+const client = realpathSync(fileURLToPath(new URL('./src/client', import.meta.url)));
+const nodeModules = realpathSync(fileURLToPath(new URL('./node_modules', import.meta.url)));
 
 export default defineConfig({
   root: client,
+  // No public directory: it would bypass server.fs.deny (Codex Phase 4 review, round 2).
+  publicDir: false,
+  // Test copies point this at a private directory so parallel dev servers don't share a cache.
+  ...(process.env.VITE_CACHE_DIR ? { cacheDir: process.env.VITE_CACHE_DIR } : {}),
   plugins: [react()],
   build: { outDir: '../../dist/client', emptyOutDir: true },
   server: {

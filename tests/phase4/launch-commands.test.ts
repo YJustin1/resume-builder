@@ -1,8 +1,9 @@
 // SPEC §9 through the supported launch commands (Codex Phase 4 review,
-// findings 5 and 9): `npm run dev` (src/server/dev.ts: Vite + API) and
-// `npm run demo` (vite build, then the API serving the UI), against isolated
-// temporary roots (RB_ROOT) on free ports. Refusals must exit 2 and leave
-// nothing listening; successful runs serve both the UI and the API.
+// findings 5, 9, 12 and round-2 finding 2): `npm run dev` (src/server/dev.ts:
+// Vite + API) and `npm run demo` (vite build, then the API serving the UI),
+// run from a temporary project copy against isolated roots (RB_ROOT) on free
+// ports. Refusals exit 2 and leave nothing listening; successful runs serve
+// both the UI and the API.
 
 import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
 import { copyFileSync, existsSync, mkdirSync, mkdtempSync, rmSync, symlinkSync } from 'node:fs';
@@ -10,10 +11,13 @@ import { createServer, type Server } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, describe, expect, it } from 'vitest';
 import { UI_CSP } from '../../src/server/app.ts';
+import { LIVE_REPO, projectCopy } from '../support/project-copy.ts';
 
-const REPO = fileURLToPath(new URL('../../', import.meta.url));
+const copy = projectCopy();
+afterAll(() => copy.remove());
+const REPO = copy.dir;
 const DEV = join(REPO, 'src/server/dev.ts');
 const SEED = join(REPO, 'src/server/demo-seed.ts');
 
@@ -26,7 +30,7 @@ function makeRoot(): string {
   const root = mkdtempSync(join(tmpdir(), 'rb-launch-'));
   cleanup.push(() => rmSync(root, { recursive: true, force: true }));
   mkdirSync(join(root, 'fixtures'));
-  for (const f of ['primary.input.json', 'overflow.input.json', 'sections.input.json']) copyFileSync(join(REPO, 'fixtures', f), join(root, 'fixtures', f));
+  for (const f of ['primary.input.json', 'overflow.input.json', 'sections.input.json']) copyFileSync(join(LIVE_REPO, 'fixtures', f), join(root, 'fixtures', f));
   return root;
 }
 
@@ -48,7 +52,7 @@ async function listening(port: number): Promise<boolean> {
 }
 
 function env(root: string, extra: Record<string, string>) {
-  const e: Record<string, string> = { ...(process.env as Record<string, string>), RB_ROOT: root, ...extra };
+  const e: Record<string, string> = { ...(process.env as Record<string, string>), RB_ROOT: root, VITE_CACHE_DIR: join(root, '.vite-cache'), ...extra };
   if (!('DB_PATH' in extra)) delete e.DB_PATH;
   return e;
 }
@@ -118,9 +122,50 @@ describe('npm run dev (src/server/dev.ts)', () => {
     expect(await listening(apiPort)).toBe(false);
   }, 90_000);
 
-  it('2: DB_PATH inside .demo is refused with exit 2 and nothing is left listening', async () => {
+  it('2: DB_PATH inside .demo is refused with exit 2 and nothing is left listening, also spelled via ../', async () => {
     const root = makeRoot();
     await expectRefusal(root, { DB_PATH: join(root, '.demo', 'demo.sqlite') });
+    await expectRefusal(root, { DB_PATH: `${root}/.demo/../.demo/demo.sqlite` });
+  }, 90_000);
+
+  it('6b: a dangling DB_PATH symlink is refused', async () => {
+    const root = makeRoot();
+    const link = join(root, 'dangling.sqlite');
+    symlinkSync(join(root, 'missing', 'nothing.sqlite'), link);
+    await expectRefusal(root, { DB_PATH: link });
+  }, 90_000);
+
+  it('a database inside a directory the dev server serves is refused, whatever its name (review round 2, finding 2)', async () => {
+    const root = makeRoot();
+    await expectRefusal(root, { DB_PATH: join(REPO, 'src', 'client', 'personal.db') });
+    await expectRefusal(root, { DB_PATH: join(REPO, 'node_modules', 'personal.db') });
+    expect(existsSync(join(REPO, 'src', 'client', 'personal.db'))).toBe(false);
+  }, 90_000);
+
+  it('another server already on the API port never answers through the proxy; the launcher exits nonzero (review, 12)', async () => {
+    const root = makeRoot();
+    const { createServer: createHttp } = await import('node:http');
+    const impostor = createHttp((_req, res) => res.end('IMPOSTOR'));
+    await new Promise<void>((r) => impostor.listen(0, '127.0.0.1', r));
+    cleanup.push(() => impostor.close());
+    const apiPort = (impostor.address() as { port: number }).port;
+    const uiPort = await freePort();
+    const run = launch(process.execPath, [DEV], env(root, { UI_PORT: String(uiPort), API_PORT: String(apiPort) }));
+    const seen: string[] = [];
+    while (run.child.exitCode === null) {
+      try {
+        const res = await fetch(`http://127.0.0.1:${uiPort}/api/profile`, { signal: AbortSignal.timeout(1000) });
+        seen.push(`${res.status} ${await res.text()}`);
+      } catch {
+        // not listening yet, or already closed
+      }
+      await new Promise((r) => setTimeout(r, 50));
+    }
+    expect(await run.exit, run.output()).not.toBe(0);
+    expect(seen.filter((s) => s.includes('IMPOSTOR'))).toEqual([]);
+    expect(seen.length, 'the UI port answered at least once while the API was starting').toBeGreaterThan(0);
+    expect(seen.every((s) => s.startsWith('503 '))).toBe(true);
+    expect(await listening(uiPort)).toBe(false);
   }, 90_000);
 
   it('6: a DB_PATH symlink outside .demo pointing at the demo database is refused', async () => {

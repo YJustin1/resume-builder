@@ -74,6 +74,34 @@ async function waitForFile(path: string) {
   }
   throw new Error(`no file ${path}`);
 }
+/**
+ * Hold the first request matching each "METHOD /path" until its release
+ * function is called (delayed responses for the race tests). Call stop() after.
+ */
+async function hold(keys: string[]) {
+  const release: Record<string, () => void> = {};
+  const gates = new Map<string, Promise<void>>(keys.map((k) => [k, new Promise<void>((r) => (release[k] = r))]));
+  const onRequest = async (req: import('puppeteer').HTTPRequest) => {
+    const key = `${req.method()} ${new URL(req.url()).pathname}`;
+    const gate = gates.get(key);
+    gates.delete(key);
+    if (gate) await gate;
+    await req.continue().catch(() => undefined); // the page may have aborted it meanwhile
+  };
+  await page.setRequestInterception(true);
+  page.on('request', onRequest);
+  return {
+    release: (key: string) => release[key]!(),
+    stop: async () => {
+      page.off('request', onRequest);
+      await page.setRequestInterception(false);
+    },
+  };
+}
+/** :disabled also covers controls disabled by an enclosing <fieldset disabled>; the .disabled property does not. */
+const isDisabled = (sel: string) => page.$eval(sel, (b) => b.matches(':disabled'));
+const ariaButton = (name: string) => `::-p-aria([name="${name}"][role="button"])`;
+
 async function replaceText(name: string, value: string) {
   await textbox(name).click({ count: 3 });
   await page.keyboard.press('Backspace');
@@ -157,44 +185,27 @@ describe('UI smoke test (built client, real API, headless Chrome)', () => {
   }, STEP);
 
   it('pending open and save lock the editor, so a late response cannot overwrite newer edits (review, 3)', async () => {
-    // Hold the first GET (open) and PUT (save) of Security until released.
-    const release: Record<string, () => void> = {};
-    const gates = new Map<string, Promise<void>>([
-      ['GET /api/resumes/r-security', new Promise((r) => (release.open = r))],
-      ['PUT /api/resumes/r-security', new Promise((r) => (release.save = r))],
-    ]);
-    const onRequest = async (req: import('puppeteer').HTTPRequest) => {
-      const key = `${req.method()} ${new URL(req.url()).pathname}`;
-      const gate = gates.get(key);
-      gates.delete(key);
-      if (gate) await gate;
-      await req.continue();
-    };
-    await page.setRequestInterception(true);
-    page.on('request', onRequest);
+    const held = await hold(['GET /api/resumes/r-security', 'PUT /api/resumes/r-security']);
     try {
-      const moveUp = '::-p-aria([name="Move bullet 2 of Northwind Lab up"][role="button"])';
-      // :disabled also covers buttons disabled by an enclosing <fieldset disabled>; the .disabled property does not.
-      const disabled = (sel: string) => page.$eval(sel, (b) => b.matches(':disabled'));
+      const moveUp = ariaButton('Move bullet 2 of Northwind Lab up');
       await button('Security').click(); // from Engineering; its GET is held
       await waitForText('Opening…');
-      expect(await disabled('::-p-aria([name="Engineering"][role="button"])')).toBe(true);
-      release.open!();
+      expect(await isDisabled(ariaButton('Engineering'))).toBe(true);
+      held.release('GET /api/resumes/r-security');
       await waitForText('Northwind Lab');
       await page.waitForFunction(() => !document.body.innerText.includes('Opening…'));
 
       await button('Move bullet 2 of Northwind Lab up').click();
       await button('Save resume').click(); // its PUT is held
       await waitForText('Saving…');
-      expect(await disabled(moveUp)).toBe(true); // no edits while the save is pending
-      expect(await disabled('::-p-aria([name="Engineering"][role="button"])')).toBe(true);
-      release.save!();
+      expect(await isDisabled(moveUp)).toBe(true); // no edits while the save is pending
+      expect(await isDisabled(ariaButton('Engineering'))).toBe(true);
+      held.release('PUT /api/resumes/r-security');
       await waitForText('Saved “Security”.');
-      expect(await disabled(moveUp)).toBe(false);
+      expect(await isDisabled(moveUp)).toBe(false);
       expect(lib.getResume('r-security').experiences[0]!.bullets.map((b) => b.variantId)).toEqual(['v21', 'v11']);
     } finally {
-      page.off('request', onRequest);
-      await page.setRequestInterception(false);
+      await held.stop();
     }
   }, STEP);
 
@@ -209,17 +220,74 @@ describe('UI smoke test (built client, real API, headless Chrome)', () => {
     await button('Discard changes').click();
   }, STEP);
 
-  it('export with the overflow warning: Overflow prints to several pages and says so; the PDF downloads', async () => {
+  it('export with the overflow warning: switching is locked while it renders; the warning shows and the PDF downloads (review, 10)', async () => {
     await button('Overflow').click();
     await waitForText('Overflow Lab');
-    await button('Download PDF').click();
-    await page.waitForFunction(() => /Warning: this PDF is \d+ pages long\./.test(document.body.innerText), { timeout: 45_000 });
+    const held = await hold(['GET /api/resumes/r-overflow/export/pdf']);
+    try {
+      await button('Download PDF').click();
+      await waitForText('Rendering PDF…');
+      expect(await isDisabled(ariaButton('Security'))).toBe(true); // the warning cannot end up under another resume
+      held.release('GET /api/resumes/r-overflow/export/pdf');
+      await page.waitForFunction(() => /Warning: this PDF is \d+ pages long\./.test(document.body.innerText), { timeout: 45_000 });
+    } finally {
+      await held.stop();
+    }
     const pages = Number(/this PDF is (\d+) pages long/.exec(await page.evaluate(() => document.body.innerText))![1]);
     expect(pages).toBeGreaterThanOrEqual(2);
     await waitForFile(join(dir, 'downloads', 'resume-r-overflow.pdf'));
+    expect(await isDisabled(ariaButton('Security'))).toBe(false);
+  }, STEP);
+
+  it('a pending export invalidated by a library edit is cancelled: no download, no stale result (review, 10)', async () => {
+    await button('Security').click();
+    await waitForText('Northwind Lab');
+    const held = await hold(['GET /api/resumes/r-security/export/pdf']);
+    try {
+      await button('Download PDF').click();
+      await waitForText('Rendering PDF…');
+      await page.goto(`${base}/#/library`); // same document: only the hash changes
+      await button('Edit skill TypeScript').click();
+      await replaceText('Level', 'Expert');
+      await button('Save').click();
+      await page.waitForSelector('dialog[open]');
+      await page.locator('dialog[open] ::-p-aria([name="Save"][role="button"])').click();
+      await waitForText('TypeScript · Expert');
+      held.release('GET /api/resumes/r-security/export/pdf');
+      await new Promise((r) => setTimeout(r, 2000));
+    } finally {
+      await held.stop();
+    }
+    expect(readdirSync(join(dir, 'downloads'))).not.toContain('resume-r-security.pdf');
+    await page.goto(`${base}/#/resumes`);
+    const text = await page.evaluate(() => document.body.innerText);
+    expect(text).not.toContain('PDF exported');
+    expect(text).not.toContain('Rendering PDF…');
+    expect(await isDisabled(ariaButton('Overflow'))).toBe(false);
+  }, STEP);
+
+  it('a pending profile save locks the profile form (review, 11)', async () => {
+    await page.goto(`${base}/#/library`);
+    await replaceText('Headline', 'Security Engineer');
+    const held = await hold(['PATCH /api/profile']);
+    try {
+      await button('Save profile').click();
+      await page.waitForSelector('dialog[open]');
+      expect(await page.$eval('dialog[open]', (d) => (d as HTMLElement).innerText)).toContain('Security (r-security)');
+      await page.locator('dialog[open] ::-p-aria([name="Save and update 3 resumes"][role="button"])').click();
+      await waitForText('Saving…');
+      expect(await page.$eval('::-p-aria([name="Headline"][role="textbox"])', (i) => i.matches(':disabled'))).toBe(true);
+      held.release('PATCH /api/profile');
+      await waitForText('Profile saved.');
+    } finally {
+      await held.stop();
+    }
+    expect(lib.getProfile()?.label).toBe('Security Engineer');
+    expect(await page.$eval('::-p-aria([name="Headline"][role="textbox"])', (i) => (i as HTMLInputElement).value)).toBe('Security Engineer');
   }, STEP);
 
   it('preview: the saved resume renders in a sandboxed iframe', async () => {
+    await page.goto(`${base}/#/resumes`);
     await button('Security').click();
     await button('Preview').click();
     const frame = await page.waitForSelector('iframe[title="Resume preview"]');

@@ -50,13 +50,15 @@ export class ApiError extends Error {
   }
 }
 
-async function send(method: string, path: string, body?: unknown): Promise<Response> {
+async function send(method: string, path: string, body?: unknown, signal?: AbortSignal): Promise<Response> {
   try {
     return await fetch(path, {
       method,
+      ...(signal ? { signal } : {}),
       ...(body === undefined ? {} : { headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }),
     });
   } catch {
+    if (signal?.aborted) throw new ApiError(0, 'ABORTED', 'Cancelled.');
     throw new ApiError(0, 'NETWORK', 'The local server is not reachable. Is it still running?');
   }
 }
@@ -119,17 +121,17 @@ export const api = {
 
   previewUrl: (id: string) => `/api/resumes/${id}/preview`,
   /** Fetch the preview once to surface errors (e.g. PROFILE_REQUIRED) before showing it in the iframe. */
-  checkPreview: async (id: string) => {
-    const res = await send('GET', `/api/resumes/${id}/preview`);
+  checkPreview: async (id: string, signal?: AbortSignal) => {
+    const res = await send('GET', `/api/resumes/${id}/preview`, undefined, signal);
     if (!res.ok) throw await failure(res);
   },
-  exportJson: async (id: string): Promise<Blob> => {
-    const res = await send('GET', `/api/resumes/${id}/export/json`);
+  exportJson: async (id: string, signal?: AbortSignal): Promise<Blob> => {
+    const res = await send('GET', `/api/resumes/${id}/export/json`, undefined, signal);
     if (!res.ok) throw await failure(res);
     return res.blob();
   },
-  exportPdf: async (id: string): Promise<PdfExport> => {
-    const res = await send('GET', `/api/resumes/${id}/export/pdf`);
+  exportPdf: async (id: string, signal?: AbortSignal): Promise<PdfExport> => {
+    const res = await send('GET', `/api/resumes/${id}/export/pdf`, undefined, signal);
     if (!res.ok) throw await failure(res);
     return {
       blob: await res.blob(),

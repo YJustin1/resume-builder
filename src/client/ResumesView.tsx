@@ -263,26 +263,48 @@ function SkillsEditor({ library, draft, setDraft }: { library: LibraryData; draf
 
 // ---------------------------------------------------------------- preview and export
 
-function OutputPanel({ id, dirty, profileMissing }: { id: string; dirty: boolean; profileMissing: boolean }) {
+/**
+ * Preview and export for the saved resume. While a request is pending the
+ * parent locks resume switching (onBusy), so its result and any page-count
+ * warning appear under the resume that requested it. If the panel is
+ * invalidated anyway (a library edit remounts it), the request is aborted:
+ * nothing is downloaded and nothing stale is shown (Codex Phase 4 review, 10).
+ */
+function OutputPanel({ id, dirty, profileMissing, onBusy }: { id: string; dirty: boolean; profileMissing: boolean; onBusy: (busy: boolean) => void }) {
   const [preview, setPreview] = useState(0); // 0 hidden; otherwise a cache-busting counter
   const [pdf, setPdf] = useState<PdfExport | null>(null);
   const [problem, setProblem] = useState<Problem | null>(null);
   const [busy, setBusy] = useState('');
+  // One controller per mount (StrictMode mounts twice in development).
+  const aborter = useRef<AbortController | null>(null);
+  useEffect(() => {
+    const controller = new AbortController();
+    aborter.current = controller;
+    return () => {
+      controller.abort();
+      onBusy(false);
+    };
+  }, [onBusy]);
   useEffect(() => {
     setPreview(0);
     setPdf(null);
     setProblem(null);
   }, [id, dirty]);
 
-  const run = async (what: string, f: () => Promise<void>) => {
+  const run = async (what: string, f: (signal: AbortSignal) => Promise<void>) => {
+    const signal = aborter.current!.signal;
     setBusy(what);
+    onBusy(true);
     setProblem(null);
     try {
-      await f();
+      await f(signal);
     } catch (error) {
-      setProblem(problemOf(error));
+      if (!signal.aborted) setProblem(problemOf(error));
     } finally {
-      setBusy('');
+      if (!signal.aborted) {
+        setBusy('');
+        onBusy(false);
+      }
     }
   };
   const blocked = dirty || profileMissing;
@@ -292,19 +314,20 @@ function OutputPanel({ id, dirty, profileMissing }: { id: string; dirty: boolean
       {dirty && <p className="note">Save your changes before previewing or exporting. Exports always use the saved resume.</p>}
       {!dirty && profileMissing && <p className="note">Set your name in the profile (Library) before previewing or exporting.</p>}
       <div className="actions">
-        <button type="button" disabled={blocked || busy !== ''} onClick={() => (preview ? setPreview(0) : run('preview', async () => (await api.checkPreview(id), setPreview(Date.now()))))}>
+        <button type="button" disabled={blocked || busy !== ''} onClick={() => (preview ? setPreview(0) : run('preview', async (signal) => (await api.checkPreview(id, signal), setPreview(Date.now()))))}>
           {preview ? 'Hide preview' : 'Preview'}
         </button>
-        <button type="button" disabled={blocked || busy !== ''} onClick={() => run('json', async () => download(await api.exportJson(id), `resume-${id}.json`))}>
+        <button type="button" disabled={blocked || busy !== ''} onClick={() => run('json', async (signal) => download(await api.exportJson(id, signal), `resume-${id}.json`))}>
           Download JSON
         </button>
         <button
           type="button"
           disabled={blocked || busy !== ''}
           onClick={() =>
-            run('pdf', async () => {
+            run('pdf', async (signal) => {
               setPdf(null);
-              const result = await api.exportPdf(id);
+              const result = await api.exportPdf(id, signal);
+              if (signal.aborted) return;
               setPdf(result);
               download(result.blob, `resume-${id}.pdf`);
             })
@@ -344,7 +367,9 @@ export function ResumesView(props: { library: LibraryData; libraryVersion: numbe
    * (Codex Phase 4 review, 3). Operations never overlap.
    */
   const [busy, setBusy] = useState('');
+  const [outputBusy, setOutputBusy] = useState(false); // a pending preview/export also blocks switching
   const busyRef = useRef(false);
+  const isLocked = busy !== '' || outputBusy;
   const locked = async <T,>(what: string, f: () => Promise<T>): Promise<T | undefined> => {
     if (busyRef.current) return undefined;
     busyRef.current = true;
@@ -464,7 +489,7 @@ export function ResumesView(props: { library: LibraryData; libraryVersion: numbe
       <aside aria-labelledby="resume-list-h">
         <h2 id="resume-list-h">Saved resumes</h2>
         {library.resumes.length === 0 && <p className="blank">No resumes yet. Name one below and press “New resume”.</p>}
-        <fieldset className="plain" disabled={busy !== ''}>
+        <fieldset className="plain" disabled={isLocked}>
         <ul className="resume-list">
           {library.resumes.map((r) => (
             <li key={r.id}>
@@ -504,7 +529,7 @@ export function ResumesView(props: { library: LibraryData; libraryVersion: numbe
         {!saved || !draft ? (
           <p className="blank">{library.resumes.length > 0 ? 'Choose a saved resume on the left, or create a new one.' : 'Create a resume on the left to start.'}</p>
         ) : (
-          <fieldset className="plain" disabled={busy !== ''} aria-busy={busy !== ''}>
+          <fieldset className="plain" disabled={busy !== ''} aria-busy={isLocked}>
             <div className="row editor-head">
               <label className="field">
                 <span>Resume name</span>
@@ -531,7 +556,7 @@ export function ResumesView(props: { library: LibraryData; libraryVersion: numbe
             <SectionEditor library={library} sectionKey="projects" draft={draft} setDraft={setDraft} />
             <SkillsEditor library={library} draft={draft} setDraft={setDraft} />
             {/* Remounted per resume and per library version: no preview or result outlives the state that produced it (review, 6). */}
-            <OutputPanel key={`${saved.id}:${props.libraryVersion}`} id={saved.id} dirty={dirty} profileMissing={library.profile === null} />
+            <OutputPanel key={`${saved.id}:${props.libraryVersion}`} id={saved.id} dirty={dirty} profileMissing={library.profile === null} onBusy={setOutputBusy} />
           </fieldset>
         )}
       </div>

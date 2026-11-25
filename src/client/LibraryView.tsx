@@ -202,12 +202,19 @@ function useRecord(refresh: () => Promise<void>) {
 
 // ---------------------------------------------------------------- profile and education
 
-function ProfileSection({ profile, refresh }: { profile: Profile | null; refresh: () => Promise<void> }) {
+/**
+ * Remounted (keyed) whenever the stored profile changes, so the form starts
+ * from saved values; the saved notice therefore lives in the parent.
+ */
+function ProfileSection({ profile, refresh, notice, onNotice }: { profile: Profile | null; refresh: () => Promise<void>; notice: string; onNotice: (n: string) => void }) {
   const sharedSave = useSharedSave();
   const [values, setValues] = useState<FormValues>(() => valuesOf(profile ?? {}, keys(PROFILE_FIELDS)));
   const [education, setEducation] = useState<FormValues[]>(() => (profile?.education ?? []).map((e) => valuesOf(e, keys(EDUCATION_FIELDS))));
   const [problem, setProblem] = useState<Problem | null>(null);
   const [status, setStatus] = useState('');
+  // Locked from Save until the refresh: a refresh remounts this section, so an
+  // edit made while the save is pending would be lost (Codex Phase 4 review, 11).
+  const [busy, setBusy] = useState(false);
 
   if (!profile) {
     return (
@@ -234,17 +241,21 @@ function ProfileSection({ profile, refresh }: { profile: Profile | null; refresh
   const save = async () => {
     setProblem(null);
     setStatus('');
+    onNotice('');
     const patch = patchBody(valuesOf(profile, keys(PROFILE_FIELDS)), values);
     const nextEducation = education.map((e) => createBody(e));
     if (JSON.stringify(nextEducation) !== JSON.stringify(originalEducation)) patch.education = nextEducation;
     if (Object.keys(patch).length === 0) return setStatus('No changes to save.');
+    setBusy(true);
     try {
       if (await sharedSave({ op: 'edit', type: 'profile', patch }, 'your profile', () => api.patchProfile(patch))) {
+        onNotice('Profile saved.');
         await refresh();
-        setStatus('Profile saved.');
       }
     } catch (error) {
       setProblem(problemOf(error));
+    } finally {
+      setBusy(false);
     }
   };
   const moveEdu = (i: number, d: -1 | 1) => {
@@ -266,6 +277,7 @@ function ProfileSection({ profile, refresh }: { profile: Profile | null; refresh
           void save();
         }}
       >
+        <fieldset className="plain" disabled={busy} aria-busy={busy}>
         <div className="fields">
           {PROFILE_FIELDS.map((f) => (
             <TextField key={f.key} label={f.label} required={f.required} hint={f.hint} value={values[f.key] ?? ''} onChange={(v) => setValues({ ...values, [f.key]: v })} />
@@ -310,9 +322,10 @@ function ProfileSection({ profile, refresh }: { profile: Profile | null; refresh
             Save profile
           </button>
           <span role="status" className="muted">
-            {status}
+            {busy ? 'Saving…' : status || notice}
           </span>
         </div>
+        </fieldset>
       </form>
     </section>
   );
@@ -536,12 +549,13 @@ function SkillsSection({ skills, refresh }: { skills: SkillView[]; refresh: () =
 // ---------------------------------------------------------------- view
 
 export function LibraryView({ library, refresh }: { library: LibraryData; refresh: () => Promise<void> }) {
+  const [profileNotice, setProfileNotice] = useState('');
   return (
     <div className="library">
       <div className="scope shared" role="note">
         <strong>Shared library</strong> — edits change every resume that uses the record. Before a change reaches a saved resume, you’ll see which ones.
       </div>
-      <ProfileSection key={JSON.stringify(library.profile)} profile={library.profile} refresh={refresh} />
+      <ProfileSection key={JSON.stringify(library.profile)} profile={library.profile} refresh={refresh} notice={profileNotice} onNotice={setProfileNotice} />
       <EntriesSection kind="work" entries={library.experiences} refresh={refresh} />
       <EntriesSection kind="project" entries={library.projects} refresh={refresh} />
       <SkillsSection skills={library.skills} refresh={refresh} />
