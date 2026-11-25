@@ -2,7 +2,23 @@
 
 A local, single-user resume builder. You keep **one library** of work experiences, projects, accomplishments, several **wording variants** per accomplishment, and skills. Each role-specific resume is a saved **configuration** that references library records rather than copying their text. Correcting a shared wording therefore updates every resume that uses it. Deleting a record that a saved resume still uses is blocked, and the affected resumes are listed. Exports are standard [JSON Resume](https://jsonresume.org) documents, rendered to HTML and PDF with reused third-party software.
 
-**Status:** pre-implementation. The specification and fixtures are written; application code has not started.
+**Status:** Phases 0–4 done (library and integrity rules, assembly and HTTP API, rendering and export, UI). Phase 5 (delivery) is next; see [SPEC.md](SPEC.md) §8 and [docs/agent-log.md](docs/agent-log.md).
+
+## Run the app
+
+Requirements: Node.js 24 (`.nvmrc`) and Google Chrome (tested on macOS 15 with Chrome 158).
+
+```sh
+PUPPETEER_SKIP_DOWNLOAD=1 npm ci
+export PUPPETEER_EXECUTABLE_PATH="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"   # macOS
+npm run demo:seed -- --reset   # synthetic demo database at .demo/demo.sqlite (Security, Engineering, Overflow)
+npm run demo                   # builds the UI; UI + API on http://127.0.0.1:5174 with the demo database
+npm run dev                    # UI with live reload on http://127.0.0.1:5173 (API on 5174), personal database
+npm run check                  # typecheck + all tests, including real PDF rendering and a browser smoke test
+```
+
+The personal database is `.data/library.sqlite` unless `DB_PATH` is set. Everything binds to `127.0.0.1` only.
+
 
 ## Starting point (third-party code)
 

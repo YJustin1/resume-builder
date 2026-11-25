@@ -192,3 +192,27 @@ The owner then inspected the fresh Security, Overflow and Platform PDFs: "all th
 **Audit:** the owner asked for a Codex audit of the whole phase. Round 1 (base `b847ec6`) raised 3 blockers and 2 improvements, all fixed (docs/decisions.md, "Phase 3 Codex review"). Round 2 confirmed them and raised 1 new blocker (an empty-rendering Markdown bullet, D21), also fixed. Round 3, the cap, raised 2 blockers in that fix, which were fixed but not reviewer-verified, plus a premise question. The owner approved D21 ("reject on save") and chose to keep the phone link clickable (D22).
 
 **Check:** `npm run check` gives 296 passed, 0 todo.
+
+## Phase 4 — UI (2026-11-24)
+
+**Instruction:** "Sounds good", approving the Phase 4 plan, the six dependencies and the `dev`/`demo` setup.
+
+**Work:**
+
+- **Dependencies:** React 19.3.1 and Vite 8.3.7, plus `@vitejs/plugin-react` and the React types, each pinned exactly to a release at least two weeks old (THIRD_PARTY.md). No router, component library, CSS framework or DOM-testing library.
+- **Commands:**
+  - `npm run dev` runs the API and the Vite dev server, with `/api` proxied.
+  - `npm run demo` builds the UI, and the API server then serves it and the API together on 127.0.0.1:5174, with its own CSP.
+  - `npm run build` builds the UI only.
+- **`src/client/`:**
+  - A **Library** view, labeled "Shared library". Edits to rendered shared fields show the impact prompt; fact and tag edits save directly; deletes are checked first and show the affected resumes when blocked. Profile and education include the first-run form.
+  - A **Resumes** view, labeled "This resume only": ordered entries, bullets and skills with up/down controls, the fact shown next to each wording choice, no default wording, an "Unsaved changes" marker, and a Save / Discard / Cancel prompt when switching resumes.
+  - Preview and export are disabled until saved. Preview appears in a sandboxed iframe, and the PDF overflow warning comes from `X-Page-Count`.
+- **Tests:**
+  - `tests/phase4/ui-smoke.test.ts` drives the built UI over HTTP in headless Chrome through the five §7.2 flows, plus the explicit-wording rule, the switch prompt and the preview sandbox. It fails on any console error except Chrome reporting that the sandbox blocked Even's script.
+  - `client-logic.test.ts` covers the draft operations and the form-to-request conversion; `ui-serving.test.ts` covers the CSP, asset names, traversal and the Host check.
+- **Found while building:**
+  - Vitest loaded `vite.config.ts` (root `src/client`) and found no tests; a `vitest.config.ts` now fixes the test root.
+  - The smoke test's first run caught the expected sandbox block of Even's script, which is now asserted explicitly.
+
+**Check:** `npm run check` gives 325 passed, 0 todo. The smoke test passed 3 of 3 reruns. `npm run demo` and `npm run dev` were started and exercised by hand with curl, and both stop cleanly.
