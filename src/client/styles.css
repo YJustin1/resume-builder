@@ -232,6 +232,7 @@ button.add {
   grid-column: 1 / -1;
 }
 input,
+textarea,
 select {
   font: inherit;
   padding: 0.35rem 0.5rem;
@@ -369,4 +370,11 @@ dialog h2 {
   .resumes {
     grid-template-columns: 1fr;
   }
+}
+
+fieldset.plain {
+  border: none;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
 }

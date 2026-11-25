@@ -24,6 +24,7 @@ interface FieldDef {
   required?: boolean;
   hint?: string;
   wide?: boolean;
+  multiline?: boolean;
 }
 
 const DATE_HINT = 'YYYY, YYYY-MM or YYYY-MM-DD';
@@ -43,13 +44,13 @@ const PROJECT_FIELDS: FieldDef[] = [
 ];
 const ACCOMPLISHMENT_FIELDS: FieldDef[] = [
   { key: 'fact', label: 'Fact (what actually happened; internal)', required: true, wide: true },
-  { key: 'tags', label: 'Tags (comma separated; internal)', wide: true },
+  { key: 'tags', label: 'Tags (one per line; internal)', wide: true, multiline: true },
 ];
 const VARIANT_FIELDS: FieldDef[] = [{ key: 'text', label: 'Wording (printed as a bullet)', required: true, wide: true }];
 const SKILL_FIELDS: FieldDef[] = [
   { key: 'name', label: 'Skill', required: true },
   { key: 'level', label: 'Level' },
-  { key: 'keywords', label: 'Keywords (comma separated)', wide: true },
+  { key: 'keywords', label: 'Keywords (one per line)', wide: true, multiline: true },
 ];
 const PROFILE_FIELDS: FieldDef[] = [
   { key: 'name', label: 'Name', required: true },
@@ -102,7 +103,16 @@ function RecordForm(props: {
         <legend>{props.legend}</legend>
         <div className="fields">
           {props.fields.map((f) => (
-            <TextField key={f.key} label={f.label} required={f.required} hint={f.hint} wide={f.wide} value={values[f.key] ?? ''} onChange={(v) => setValues({ ...values, [f.key]: v })} />
+            <TextField
+              key={f.key}
+              label={f.label}
+              required={f.required}
+              hint={f.hint}
+              wide={f.wide}
+              multiline={f.multiline}
+              value={values[f.key] ?? ''}
+              onChange={(v) => setValues({ ...values, [f.key]: v })}
+            />
           ))}
         </div>
         <ProblemBox problem={problem} />

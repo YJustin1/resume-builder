@@ -24,21 +24,27 @@ interface PromptRequest {
 type Prompt = (title: string, body: ReactNode, choices: Choice[]) => Promise<string | null>;
 const PromptContext = createContext<Prompt>(async () => null);
 
+/**
+ * Prompts are queued: a second prompt waits for the first instead of
+ * replacing it, so every caller's promise resolves (Codex Phase 4 review, 8).
+ */
 export function PromptProvider({ children }: { children: ReactNode }) {
-  const [request, setRequest] = useState<PromptRequest | null>(null);
+  const [queue, setQueue] = useState<PromptRequest[]>([]);
+  const request = queue[0] ?? null;
   const dialog = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
     const d = dialog.current;
-    if (request && d && !d.open) d.showModal();
+    if (!d) return;
+    if (request && !d.open) d.showModal();
+    if (!request && d.open) d.close();
   }, [request]);
 
-  const prompt = useCallback<Prompt>((title, body, choices) => new Promise((resolve) => setRequest({ title, body, choices, resolve })), []);
+  const prompt = useCallback<Prompt>((title, body, choices) => new Promise((resolve) => setQueue((q) => [...q, { title, body, choices, resolve }])), []);
 
   const finish = (value: string | null) => {
     request?.resolve(value);
-    setRequest(null);
-    dialog.current?.close();
+    setQueue((q) => q.slice(1));
   };
 
   return (
@@ -109,31 +115,47 @@ export function ProblemBox({ problem }: { problem: Problem | null }) {
 
 // ---------------------------------------------------------------- forms
 
-export function TextField(props: { label: string; value: string; onChange: (v: string) => void; required?: boolean; hint?: string; wide?: boolean }) {
+export function TextField(props: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  required?: boolean | undefined;
+  hint?: string | undefined;
+  wide?: boolean | undefined;
+  multiline?: boolean | undefined;
+}) {
   return (
     <label className={props.wide ? 'field wide' : 'field'}>
       <span>
         {props.label}
         {props.required ? ' *' : ''}
       </span>
-      <input value={props.value} required={props.required} onChange={(e) => props.onChange(e.target.value)} />
+      {props.multiline ? (
+        <textarea rows={3} value={props.value} onChange={(e) => props.onChange(e.target.value)} />
+      ) : (
+        <input value={props.value} required={props.required} onChange={(e) => props.onChange(e.target.value)} />
+      )}
       {props.hint && <small className="muted">{props.hint}</small>}
     </label>
   );
 }
 
-/** Form values are strings; lists are comma separated. */
+/**
+ * Form values are strings; list fields (tags, keywords) hold one item per
+ * line. Items are single-line by the server's rules, so this round-trips
+ * exactly, including items that contain commas (Codex Phase 4 review, 7).
+ */
 export type FormValues = Record<string, string>;
 
 export const toList = (s: string) =>
   s
-    .split(',')
+    .split('\n')
     .map((x) => x.trim())
     .filter(Boolean);
 
 export function valuesOf(record: object, fields: string[], lists: string[] = []): FormValues {
   const r = record as Record<string, unknown>;
-  return Object.fromEntries(fields.map((f) => [f, lists.includes(f) ? ((r[f] as string[] | undefined) ?? []).join(', ') : ((r[f] as string | undefined) ?? '')]));
+  return Object.fromEntries(fields.map((f) => [f, lists.includes(f) ? ((r[f] as string[] | undefined) ?? []).join('\n') : ((r[f] as string | undefined) ?? '')]));
 }
 
 /** A create body: present, non-empty values only. */
@@ -167,27 +189,32 @@ export function patchBody(original: FormValues, edited: FormValues, lists: strin
 
 /**
  * FR-01: before saving an edit to a rendered shared field, show the resumes
- * whose export will change (impactOf via POST /api/impact) and ask. Returns
- * true when saved. An edit that changes no export saves without a prompt.
+ * whose export will change (impactOf via POST /api/impact) and ask, also when
+ * the list is empty (Codex Phase 4 review, 4). Returns true when saved.
  */
 export function useSharedSave() {
   const prompt = usePrompt();
   return useCallback(
     async (change: Change & { op: 'edit' }, label: string, save: () => Promise<unknown>): Promise<boolean> => {
       const { affectedResumes } = await api.impact(change);
-      if (affectedResumes.length > 0) {
-        const ok = await prompt(
-          'Change a shared record?',
+      const n = affectedResumes.length;
+      const ok = await prompt(
+        'Change a shared record?',
+        n > 0 ? (
           <>
             <p>
-              Saving this edit to <strong>{label}</strong> changes the export of {affectedResumes.length === 1 ? 'this saved resume' : `these ${affectedResumes.length} saved resumes`}:
+              Saving this edit to <strong>{label}</strong> changes the export of {n === 1 ? 'this saved resume' : `these ${n} saved resumes`}:
             </p>
             <ResumeList resumes={affectedResumes} />
-          </>,
-          [{ value: 'save', label: `Save and update ${affectedResumes.length === 1 ? '1 resume' : `${affectedResumes.length} resumes`}`, primary: true }],
-        );
-        if (ok !== 'save') return false;
-      }
+          </>
+        ) : (
+          <p>
+            No saved resume’s export changes: no saved resume uses <strong>{label}</strong> in a way this edit affects. Resumes that select it later will use the new value.
+          </p>
+        ),
+        [{ value: 'save', label: n > 0 ? `Save and update ${n === 1 ? '1 resume' : `${n} resumes`}` : 'Save', primary: true }],
+      );
+      if (ok !== 'save') return false;
       await save();
       return true;
     },

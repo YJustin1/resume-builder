@@ -215,4 +215,24 @@ The owner then inspected the fresh Security, Overflow and Platform PDFs: "all th
   - Vitest loaded `vite.config.ts` (root `src/client`) and found no tests; a `vitest.config.ts` now fixes the test root.
   - The smoke test's first run caught the expected sandbox block of Even's script, which is now asserted explicitly.
 
-**Check:** `npm run check` gives 325 passed, 0 todo. The smoke test passed 3 of 3 reruns. `npm run demo` and `npm run dev` were started and exercised by hand with curl, and both stop cleanly.
+**Check (before review):** `npm run check` gave 325 passed, 0 todo. The smoke test passed 3 of 3 reruns. `npm run demo` and `npm run dev` were started and exercised by hand with curl, and both stop cleanly.
+
+**Codex review round 1** (session `rb-phase4-code`, base `9f0493c`): 5 blockers, 4 improvements, all addressed.
+
+1. **Dev server CORS (BLOCKER).** Confirmed with curl: Vite granted `Access-Control-Allow-Origin` to `http://127.0.0.1:9999`. Fixed with `server.cors: false`.
+2. **Dev server served the database (BLOCKER).** Confirmed: `/@fs/<project>/.probe/library.sqlite` returned the file. Fixed with `server.fs.allow` limited to `src/client` and `node_modules`, and denial of `*.sqlite*`, `.data/` and `.demo/`. Regression: `tests/phase4/dev-server.test.ts`, which starts the real config.
+3. **Late responses could overwrite edits (BLOCKER).** Open, save, create and delete now lock the editor and the resume list (`<fieldset disabled>`) and never overlap. Smoke-test regression: Puppeteer holds the GET and PUT, the test checks that the controls are disabled while pending, then releases them.
+4. **Shared edits skipped confirmation when the impact list was empty (BLOCKER).** The prompt now always appears, saying that no saved resume's export changes. Smoke-test regression includes Cancel.
+5. **A failed Vite startup left the API running (BLOCKER).** `dev.ts` starts Vite first, so a busy UI port never opens the database; it passes the API's exit code through (2 on refusal) after closing Vite. Two more protections:
+   - Vite's own SIGTERM handler, which exits immediately, is replaced by the launcher's;
+   - an exit hook signals the API on any exit path.
+
+   Regressions are in `tests/phase4/launch-commands.test.ts`.
+6. **Stale output (IMPROVE).** The output panel is remounted per resume and per library version.
+7. **Commas in keywords and tags (IMPROVE).** These are now one item per line, which round-trips because items are single-line.
+8. **Overlapping prompts (IMPROVE).** Prompts are now queued. No automated test.
+9. **Command coverage (IMPROVE).** `launch-commands.test.ts` runs the §9 refusal and fresh-start cases (2, 5, 6, 7, 7b) through `src/server/dev.ts` and `npm run demo` in isolated roots. `--ui` now locates `dist/client` from the module URL, because the build is a code artifact, not data under `RB_ROOT`.
+
+Planted faults that failed tests: no editor lock; skipping the prompt when no resume is affected; comma-separated lists; Vite's default CORS; Vite's default `fs`; API started before Vite. **Not caught:** keeping Vite's SIGTERM handler. With the exit hook in place, its only effect is an exit-code race (143 or 0); no orphan resulted in 2 whole-file runs or per-test runs.
+
+**Check:** `npm run check` gives 344 passed, 0 todo; the smoke and launch tests each passed 3 of 3 reruns.

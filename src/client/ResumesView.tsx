@@ -2,7 +2,7 @@
 // and skills for one resume from the shared library. Every change here is
 // local to the draft until Save, and Save affects only this resume.
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { api, type EntryView, type LibraryData, type PdfExport, type ResumeConfiguration } from './api.ts';
 import {
   addBullet,
@@ -335,8 +335,27 @@ function OutputPanel({ id, dirty, profileMissing }: { id: string; dirty: boolean
 
 // ---------------------------------------------------------------- view
 
-export function ResumesView({ library, refresh, onDirtyChange }: { library: LibraryData; refresh: () => Promise<void>; onDirtyChange: (dirty: boolean) => void }) {
+export function ResumesView(props: { library: LibraryData; libraryVersion: number; refresh: () => Promise<void>; onDirtyChange: (dirty: boolean) => void }) {
+  const { library, refresh, onDirtyChange } = props;
   const prompt = usePrompt();
+  /**
+   * A pending save, open, create or delete locks the editor and the resume
+   * list, so a late response can never overwrite edits made in the meantime
+   * (Codex Phase 4 review, 3). Operations never overlap.
+   */
+  const [busy, setBusy] = useState('');
+  const busyRef = useRef(false);
+  const locked = async <T,>(what: string, f: () => Promise<T>): Promise<T | undefined> => {
+    if (busyRef.current) return undefined;
+    busyRef.current = true;
+    setBusy(what);
+    try {
+      return await f();
+    } finally {
+      busyRef.current = false;
+      setBusy('');
+    }
+  };
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [saved, setSaved] = useState<ResumeConfiguration | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
@@ -356,17 +375,22 @@ export function ResumesView({ library, refresh, onDirtyChange }: { library: Libr
       setProblem({ message: problems.join(' ') });
       return false;
     }
-    try {
-      const result = await api.saveResume(saved.id, toPayload(draft));
-      setSaved(result);
-      setDraft(fromConfiguration(result));
-      setStatus(`Saved “${result.name}”. Other resumes are unchanged.`);
-      await refresh();
-      return true;
-    } catch (error) {
-      setProblem(problemOf(error));
-      return false;
-    }
+    const id = saved.id;
+    const payload = toPayload(draft);
+    const ok = await locked('Saving…', async () => {
+      try {
+        const result = await api.saveResume(id, payload);
+        setSaved(result);
+        setDraft(fromConfiguration(result));
+        setStatus(`Saved “${result.name}”. Other resumes are unchanged.`);
+        await refresh();
+        return true;
+      } catch (error) {
+        setProblem(problemOf(error));
+        return false;
+      }
+    });
+    return ok === true;
   };
 
   /** FR-02: never save silently when switching; ask to save or discard. Returns false to stay. */
@@ -381,32 +405,37 @@ export function ResumesView({ library, refresh, onDirtyChange }: { library: Libr
   };
 
   const open = async (id: string) => {
-    if (id === selectedId || !(await leave())) return;
+    if (busyRef.current || id === selectedId || !(await leave())) return;
     setProblem(null);
     setStatus('');
-    try {
-      const config = await api.getResume(id);
-      setSelectedId(id);
-      setSaved(config);
-      setDraft(fromConfiguration(config));
-    } catch (error) {
-      setProblem(problemOf(error));
-    }
+    await locked('Opening…', async () => {
+      try {
+        const config = await api.getResume(id);
+        setSelectedId(id);
+        setSaved(config);
+        setDraft(fromConfiguration(config));
+      } catch (error) {
+        setProblem(problemOf(error));
+      }
+    });
   };
 
   const create = async () => {
-    if (newName.trim() === '' || !(await leave())) return;
-    try {
-      const config = await api.createResume(newName.trim());
-      setNewName('');
-      await refresh();
-      setSelectedId(config.id);
-      setSaved(config);
-      setDraft(fromConfiguration(config));
-      setStatus(`Created “${config.name}”. It starts empty; add entries below.`);
-    } catch (error) {
-      setProblem(problemOf(error));
-    }
+    if (busyRef.current || newName.trim() === '' || !(await leave())) return;
+    const name = newName.trim();
+    await locked('Creating…', async () => {
+      try {
+        const config = await api.createResume(name);
+        setNewName('');
+        await refresh();
+        setSelectedId(config.id);
+        setSaved(config);
+        setDraft(fromConfiguration(config));
+        setStatus(`Created “${config.name}”. It starts empty; add entries below.`);
+      } catch (error) {
+        setProblem(problemOf(error));
+      }
+    });
   };
 
   const remove = async () => {
@@ -415,16 +444,19 @@ export function ResumesView({ library, refresh, onDirtyChange }: { library: Libr
       { value: 'delete', label: 'Delete resume', primary: true },
     ]);
     if (ok !== 'delete') return;
-    try {
-      await api.deleteResume(saved.id);
-      setSelectedId(null);
-      setSaved(null);
-      setDraft(null);
-      setStatus(`Deleted “${saved.name}”.`);
-      await refresh();
-    } catch (error) {
-      setProblem(problemOf(error));
-    }
+    const target = saved;
+    await locked('Deleting…', async () => {
+      try {
+        await api.deleteResume(target.id);
+        setSelectedId(null);
+        setSaved(null);
+        setDraft(null);
+        setStatus(`Deleted “${target.name}”.`);
+        await refresh();
+      } catch (error) {
+        setProblem(problemOf(error));
+      }
+    });
   };
 
   return (
@@ -432,6 +464,7 @@ export function ResumesView({ library, refresh, onDirtyChange }: { library: Libr
       <aside aria-labelledby="resume-list-h">
         <h2 id="resume-list-h">Saved resumes</h2>
         {library.resumes.length === 0 && <p className="blank">No resumes yet. Name one below and press “New resume”.</p>}
+        <fieldset className="plain" disabled={busy !== ''}>
         <ul className="resume-list">
           {library.resumes.map((r) => (
             <li key={r.id}>
@@ -457,6 +490,7 @@ export function ResumesView({ library, refresh, onDirtyChange }: { library: Libr
             New resume
           </button>
         </form>
+        </fieldset>
       </aside>
 
       <div className="editor">
@@ -465,12 +499,12 @@ export function ResumesView({ library, refresh, onDirtyChange }: { library: Libr
         </div>
         <ProblemBox problem={problem} />
         <p role="status" className="muted">
-          {status}
+          {busy || status}
         </p>
         {!saved || !draft ? (
           <p className="blank">{library.resumes.length > 0 ? 'Choose a saved resume on the left, or create a new one.' : 'Create a resume on the left to start.'}</p>
         ) : (
-          <>
+          <fieldset className="plain" disabled={busy !== ''} aria-busy={busy !== ''}>
             <div className="row editor-head">
               <label className="field">
                 <span>Resume name</span>
@@ -496,8 +530,9 @@ export function ResumesView({ library, refresh, onDirtyChange }: { library: Libr
             <SectionEditor library={library} sectionKey="work" draft={draft} setDraft={setDraft} />
             <SectionEditor library={library} sectionKey="projects" draft={draft} setDraft={setDraft} />
             <SkillsEditor library={library} draft={draft} setDraft={setDraft} />
-            <OutputPanel id={saved.id} dirty={dirty} profileMissing={library.profile === null} />
-          </>
+            {/* Remounted per resume and per library version: no preview or result outlives the state that produced it (review, 6). */}
+            <OutputPanel key={`${saved.id}:${props.libraryVersion}`} id={saved.id} dirty={dirty} profileMissing={library.profile === null} />
+          </fieldset>
         )}
       </div>
     </div>

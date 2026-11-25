@@ -93,9 +93,9 @@ describe('form values to request bodies', () => {
   const entry = { name: 'Northwind Lab', position: 'Research Intern', location: 'Sample City', startDate: '2025-05-01' };
   const fields = ['name', 'position', 'location', 'url', 'startDate', 'endDate'];
 
-  it('create bodies carry only non-empty, trimmed values; lists are split on commas', () => {
-    expect(createBody({ name: ' Go ', level: '', keywords: 'a, b,, c ' }, ['keywords'])).toEqual({ name: 'Go', keywords: ['a', 'b', 'c'] });
-    expect(toList(' , ')).toEqual([]);
+  it('create bodies carry only non-empty, trimmed values; lists are one item per line', () => {
+    expect(createBody({ name: ' Go ', level: '', keywords: 'a\n b\n\n c ' }, ['keywords'])).toEqual({ name: 'Go', keywords: ['a', 'b', 'c'] });
+    expect(toList(' \n ')).toEqual([]);
   });
 
   it('patch bodies carry only changed keys, trimmed; an emptied optional field is null', () => {
@@ -107,8 +107,16 @@ describe('form values to request bodies', () => {
 
   it('list fields compare as lists', () => {
     const original = valuesOf({ tags: ['access', 'automation'] }, ['tags'], ['tags']);
-    expect(original).toEqual({ tags: 'access, automation' });
-    expect(patchBody(original, { tags: 'access,automation' }, ['tags'])).toEqual({});
+    expect(original).toEqual({ tags: 'access\nautomation' });
+    expect(patchBody(original, { tags: 'access \n automation\n' }, ['tags'])).toEqual({});
     expect(patchBody(original, { tags: 'access' }, ['tags'])).toEqual({ tags: ['access'] });
+  });
+
+  it('items containing commas round-trip; editing one item leaves the others intact (review, 7)', () => {
+    const original = valuesOf({ keywords: ['Research, Design', 'Testing'] }, ['keywords'], ['keywords']);
+    expect(toList(original.keywords!)).toEqual(['Research, Design', 'Testing']);
+    expect(patchBody(original, { keywords: `${original.keywords}\nPlanning, Review` }, ['keywords'])).toEqual({
+      keywords: ['Research, Design', 'Testing', 'Planning, Review'],
+    });
   });
 });

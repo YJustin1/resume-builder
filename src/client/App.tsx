@@ -16,10 +16,13 @@ export function App() {
   const [library, setLibrary] = useState<LibraryData | null>(null);
   const [problem, setProblem] = useState<Problem | null>(null);
   const [dirty, setDirty] = useState(false);
+  // Bumped on every library refresh, so views can drop output that predates a shared edit.
+  const [version, setVersion] = useState(0);
 
   const refresh = useCallback(async () => {
     try {
       setLibrary(await api.library());
+      setVersion((v) => v + 1);
       setProblem(null);
     } catch (error) {
       setProblem(problemOf(error));
@@ -64,7 +67,7 @@ export function App() {
               <LibraryView library={library} refresh={refresh} />
             </div>
             <div hidden={view !== 'resumes'}>
-              <ResumesView library={library} refresh={refresh} onDirtyChange={setDirty} />
+              <ResumesView library={library} libraryVersion={version} refresh={refresh} onDirtyChange={setDirty} />
             </div>
           </>
         )}

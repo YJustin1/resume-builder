@@ -91,7 +91,7 @@ describe('UI smoke test (built client, real API, headless Chrome)', () => {
   it('library creation: add a skill', async () => {
     await button('+ Add skill').click();
     await textbox('Skill *').fill('TypeScript');
-    await textbox('Keywords (comma separated)').fill('Node.js, React');
+    await textbox('Keywords (one per line)').fill('Node.js\nReact');
     await button('Create').click();
     await waitForText('TypeScript · Node.js, React');
     expect(lib.listSkills()).toEqual([expect.objectContaining({ name: 'TypeScript', keywords: ['Node.js', 'React'] })]);
@@ -109,6 +109,21 @@ describe('UI smoke test (built client, real API, headless Chrome)', () => {
     await button('Save and update 1 resume').click();
     await waitForText('Documented and shared access review findings with the team.');
     expect(lib.getVariant('v21').text).toBe('Documented and shared access review findings with the team.');
+  }, STEP);
+
+  it('impact prompt also for an edit that changes no saved resume (FR-01); cancelling changes nothing', async () => {
+    await button('Edit skill TypeScript').click();
+    await replaceText('Level', 'Advanced');
+    await button('Save').click();
+    await page.waitForSelector('dialog[open]');
+    expect(await page.$eval('dialog[open]', (d) => (d as HTMLElement).innerText)).toContain('No saved resume’s export changes');
+    await button('Cancel').click();
+    expect(lib.listSkills()[0]!.level).toBeUndefined();
+    await button('Save').click();
+    await page.waitForSelector('dialog[open]');
+    await page.locator('dialog[open] ::-p-aria([name="Save"][role="button"])').click();
+    await waitForText('TypeScript · Advanced');
+    expect(lib.listSkills()[0]!.level).toBe('Advanced');
   }, STEP);
 
   it('deletion conflict: a referenced wording is not deleted and the resumes are named', async () => {
@@ -139,6 +154,48 @@ describe('UI smoke test (built client, real API, headless Chrome)', () => {
     await button('Discard changes').click();
     await waitForText('Harbor Studio');
     expect(lib.getResume('r-security').experiences[0]!.bullets.map((b) => b.variantId)).toEqual(['v11', 'v21']);
+  }, STEP);
+
+  it('pending open and save lock the editor, so a late response cannot overwrite newer edits (review, 3)', async () => {
+    // Hold the first GET (open) and PUT (save) of Security until released.
+    const release: Record<string, () => void> = {};
+    const gates = new Map<string, Promise<void>>([
+      ['GET /api/resumes/r-security', new Promise((r) => (release.open = r))],
+      ['PUT /api/resumes/r-security', new Promise((r) => (release.save = r))],
+    ]);
+    const onRequest = async (req: import('puppeteer').HTTPRequest) => {
+      const key = `${req.method()} ${new URL(req.url()).pathname}`;
+      const gate = gates.get(key);
+      gates.delete(key);
+      if (gate) await gate;
+      await req.continue();
+    };
+    await page.setRequestInterception(true);
+    page.on('request', onRequest);
+    try {
+      const moveUp = '::-p-aria([name="Move bullet 2 of Northwind Lab up"][role="button"])';
+      // :disabled also covers buttons disabled by an enclosing <fieldset disabled>; the .disabled property does not.
+      const disabled = (sel: string) => page.$eval(sel, (b) => b.matches(':disabled'));
+      await button('Security').click(); // from Engineering; its GET is held
+      await waitForText('Opening…');
+      expect(await disabled('::-p-aria([name="Engineering"][role="button"])')).toBe(true);
+      release.open!();
+      await waitForText('Northwind Lab');
+      await page.waitForFunction(() => !document.body.innerText.includes('Opening…'));
+
+      await button('Move bullet 2 of Northwind Lab up').click();
+      await button('Save resume').click(); // its PUT is held
+      await waitForText('Saving…');
+      expect(await disabled(moveUp)).toBe(true); // no edits while the save is pending
+      expect(await disabled('::-p-aria([name="Engineering"][role="button"])')).toBe(true);
+      release.save!();
+      await waitForText('Saved “Security”.');
+      expect(await disabled(moveUp)).toBe(false);
+      expect(lib.getResume('r-security').experiences[0]!.bullets.map((b) => b.variantId)).toEqual(['v21', 'v11']);
+    } finally {
+      page.off('request', onRequest);
+      await page.setRequestInterception(false);
+    }
   }, STEP);
 
   it('a new bullet needs an explicit wording choice', async () => {

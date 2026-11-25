@@ -9,11 +9,13 @@ import { createApp } from './app.ts';
 import { acquireDemoLock } from './demo-lock.ts';
 import { existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { PathError, prepareDemoDbPath, REPO_ROOT, resolvePersonalDbPath } from './paths.ts';
 
 const demo = process.argv.includes('--demo');
 // --ui: also serve the built client (dist/client, from `vite build`) on the same port.
-const uiDir = process.argv.includes('--ui') ? join(REPO_ROOT, 'dist', 'client') : undefined;
+// It is located next to the code, not under RB_ROOT: the build is a code artifact, not data.
+const uiDir = process.argv.includes('--ui') ? fileURLToPath(new URL('../../dist/client', import.meta.url)) : undefined;
 if (uiDir && !existsSync(join(uiDir, 'index.html'))) {
   process.stderr.write(`Refusing to start: no built UI at ${uiDir}; run \`npm run build\` first.\n`);
   process.exit(2);
