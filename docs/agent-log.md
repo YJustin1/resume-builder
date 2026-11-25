@@ -189,6 +189,6 @@ The owner then inspected the fresh Security, Overflow and Platform PDFs: "all th
 
 **Chrome process leak:** reproduced (7 processes left after a hung print). The owner chose the launch wrapper with a shorter timeout (D20, docs/decisions.md).
 
-**Audit:** the owner asked for a Codex audit of the whole phase. Round 1 (base `b847ec6`) raised 3 blockers and 2 improvements, all fixed (docs/decisions.md, "Phase 3 Codex review"). Round 2 confirmed them and raised 1 new blocker (an empty-rendering Markdown bullet, D21, pending owner approval), also fixed.
+**Audit:** the owner asked for a Codex audit of the whole phase. Round 1 (base `b847ec6`) raised 3 blockers and 2 improvements, all fixed (docs/decisions.md, "Phase 3 Codex review"). Round 2 confirmed them and raised 1 new blocker (an empty-rendering Markdown bullet, D21), also fixed. Round 3, the cap, raised 2 blockers in that fix, which were fixed but not reviewer-verified, plus a premise question. The owner approved D21 ("reject on save") and chose to keep the phone link clickable (D22).
 
-**Check:** `npm run check` gives 286 passed, 0 todo.
+**Check:** `npm run check` gives 296 passed, 0 todo.

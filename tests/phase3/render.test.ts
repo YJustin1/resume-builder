@@ -61,7 +61,7 @@ describe('content policy (§3.5 runtime enforcement)', () => {
     expect(contentPolicyViolation(page(`<link rel="${rel}" href="${href}">`, ''))).toBe('<link> other than a font stylesheet or preconnect');
   });
 
-  it.each(['', '   ', 'https://example.com/page', 'http://example.com', 'mailto:sample@example.com', 'HTTPS://EXAMPLE.COM'])(
+  it.each(['', '   ', 'https://example.com/page', 'http://example.com', 'mailto:sample@example.com', 'HTTPS://EXAMPLE.COM', 'tel:+15125550100'])(
     'allows <a href="%s">',
     (href) => {
       expect(contentPolicyViolation(body(`<a href="${href}">x</a>`))).toBeNull();
@@ -71,7 +71,7 @@ describe('content policy (§3.5 runtime enforcement)', () => {
   it.each(['javascript:alert(1)', ' JaVaScRiPt:alert(1)', 'java&#9;script:alert(1)', 'data:text/html,hi', 'ftp://example.com/x', '/relative', '#top', 'file:///etc/passwd'])(
     'refuses <a href="%s">',
     (href) => {
-      expect(contentPolicyViolation(body(`<a href="${href}">x</a>`))).toBe('<a> with an href scheme other than http, https or mailto');
+      expect(contentPolicyViolation(body(`<a href="${href}">x</a>`))).toBe('<a> with an href scheme other than http, https, mailto or tel');
     },
   );
 
@@ -144,7 +144,7 @@ describe('rendering adapter failure paths (FR-06, T14 at the adapter level)', ()
 });
 
 describe('link neutralization (§3.5 rule 3: other schemes are neutralized, not refused)', () => {
-  it('blanks tel:, irc:, xmpp: and other disallowed hrefs, keeps the link text and every other byte', async () => {
+  it('blanks irc:, xmpp: and other disallowed hrefs, keeps tel: (D22), the link text and every other byte', async () => {
     const { neutralizeLinks } = await import('../../src/render/policy.ts');
     const html = body(
       '<a href="tel:+15125550100">+1 512 555 0100</a> <a class="x" href=\'irc://h/c\'>chat</a> <a href=xmpp:a@b>x</a> ' +
@@ -152,7 +152,7 @@ describe('link neutralization (§3.5 rule 3: other schemes are neutralized, not 
     );
     expect(neutralizeLinks(html)).toBe(
       body(
-        '<a href="">+1 512 555 0100</a> <a class="x" href="">chat</a> <a href="">x</a> ' +
+        '<a href="tel:+15125550100">+1 512 555 0100</a> <a class="x" href="">chat</a> <a href="">x</a> ' +
           '<a href="https://example.com/">site</a> <a href="mailto:m@x">mail</a> <a href="">gone</a> <use href="#i"></use>',
       ),
     );

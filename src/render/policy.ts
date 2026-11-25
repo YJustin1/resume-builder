@@ -13,7 +13,7 @@ const BANNED_ELEMENTS = new Set(['img', 'picture', 'source', 'iframe', 'frame', 
 const BANNED_ATTRIBUTES = new Set(['src', 'srcset', 'poster', 'data']);
 const LINK_RELS = new Set(['stylesheet', 'preconnect']);
 const FONT_HOSTS = new Set(['fonts.googleapis.com', 'fonts.gstatic.com']);
-const ANCHOR_SCHEMES = new Set(['http:', 'https:', 'mailto:']);
+const ANCHOR_SCHEMES = new Set(['http:', 'https:', 'mailto:', 'tel:']); // tel: is Even's phone link (D22)
 
 function absoluteUrl(value: string): URL | null {
   try {
@@ -38,10 +38,10 @@ function anchorAllowed(href: string): boolean {
 
 /**
  * §3.5 rule 3: "other schemes must be neutralized". Even already blanks
- * javascript:, data: and ftp: links, but keeps tel: (its phone contact link)
- * and the irc:, ircs: and xmpp: links micromark allows in user text. Each such
- * href is replaced with href="", keeping the link text, so a saved phone
- * number or chat link prints as text instead of blocking export. The exact
+ * javascript:, data: and ftp: links, but keeps the irc:, ircs: and xmpp:
+ * links micromark allows in user text. Each such href is replaced with
+ * href="", keeping the link text, so a chat link prints as text instead of
+ * blocking export. (tel:, Even's phone link, is allowed: D22.) The exact
  * attribute is spliced out by source position; nothing else in the theme's
  * HTML changes. The policy check below still runs afterwards as the backstop.
  */
@@ -78,7 +78,7 @@ function violationIn(html: string, scripting: boolean): string | null {
     const href = el.attrs.find((a) => a.name === 'href'); // includes SVG xlink:href (prefix stripped by parse5)
     if (!href) continue;
     if (tag === 'a') {
-      if (!anchorAllowed(href.value)) return '<a> with an href scheme other than http, https or mailto';
+      if (!anchorAllowed(href.value)) return '<a> with an href scheme other than http, https, mailto or tel';
     } else if (href.value.trim() !== '' && !href.value.trim().startsWith('#')) {
       // "Inline <svg> without external references is allowed" (§3.5): an href on
       // any other element (<base>, <area>, SVG <image>/<use>) is an external reference.

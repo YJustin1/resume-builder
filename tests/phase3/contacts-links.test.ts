@@ -1,7 +1,7 @@
 // Codex Phase 3 review, finding 1: a saved phone number (Even renders it as a
 // tel: link) or a chat link in a bullet (irc:/xmpp:, kept by micromark) made
-// every preview and PDF export a 409. Such links are now neutralized to plain
-// text (§3.5 rule 3); the runtime policy still backs this up.
+// every preview and PDF export a 409. tel: is now allowed (D22), so the phone
+// stays a clickable link; chat links are neutralized to plain text (§3.5 rule 3).
 
 import { describe, expect, it } from 'vitest';
 import { freshLibrary } from '../support/harness.ts';
@@ -9,7 +9,7 @@ import { Api } from '../support/http.ts';
 import { hrefValues, occurrences, printedBulletProblems } from '../support/pdf.ts';
 
 describe('phone, URL and chat links print as text instead of blocking export', () => {
-  it('profile phone and url: JSON keeps them, preview and PDF show them, no tel: href is printed', async () => {
+  it('profile phone and url: JSON keeps them, preview and PDF show them, the phone stays a tel: link', async () => {
     const api = new Api(freshLibrary('primary.input.json'));
     const patch = await api.call('PATCH', '/api/profile', { phone: '+1 512 555 0100', url: 'https://portfolio.sample.dev/' });
     expect(patch.status).toBe(200);
@@ -20,7 +20,7 @@ describe('phone, URL and chat links print as text instead of blocking export', (
     expect(preview.status).toBe(200);
     const html = await preview.text();
     expect(html).toContain('+1 512 555 0100');
-    expect(hrefValues(html).filter((h) => h.startsWith('tel:'))).toEqual([]);
+    expect(hrefValues(html).filter((h) => h.startsWith('tel:'))).toEqual(['tel:+15125550100']);
 
     const { pdf, printedHtml } = await api.printed('r-security');
     expect(occurrences(pdf.text, '+1 512 555 0100')).toBe(1);

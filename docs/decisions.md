@@ -64,7 +64,7 @@ Planted faults: removing neutralization, `protocolTimeout`, the new sort, or the
 6. **Markdown could erase a selected bullet (BLOCKER).**
    - Variant text such as `[RFC]: https://example.com/spec` saved with `200`, but micromark reads the whole line as a reference definition, so the bullet printed empty.
    - Probing micromark found the same for `---`/`***`/`___`, a bare code fence, `*`, `[]()` and `&nbsp;`.
-   - Fix (D21, pending owner approval):
+   - Fix (D21, approved by the owner in round 3):
      - `markdownText` (src/core/fields.ts) rejects variant text whose micromark rendering has no visible text, with `400 INVALID_INPUT` and an explanation;
      - the render adapter refuses such a stored highlight with `500 RENDER_FAILED` naming it, before rendering, so nothing is printed.
    - Only variant text is checked, because it is the only exported field Even renders as Markdown for our documents. Names and positions print literally.
@@ -74,6 +74,8 @@ Planted faults: removing neutralization, `protocolTimeout`, the new sort, or the
 
 7. **Zero-width text still erased a bullet (BLOCKER).** `&ZeroWidthSpace;` and `&#x200B;` decode to U+200B, which the check treated as visible. `rendersNoText` now also ignores `\p{Default_Ignorable_Code_Point}`, which covers soft hyphen and zero-width characters. Tests cover both spellings on write and a stored row at render time.
 8. **An image-only bullet returned the wrong error (BLOCKER).** The empty-text backstop ran before the content policy, so a stored `![x](…)` gave `500 RENDER_FAILED` instead of §3.5's `409 CONTENT_POLICY_VIOLATION`. The backstop now runs after the policy. Regression: image-only direct-SQL row → 409 naming `<img>`, printer never invoked.
-9. **D21 needs owner approval (PREMISE BLOCKER).** The write restriction narrows inputs the previous contract accepted; SPEC §8 requires owner approval. Awaiting the owner.
+9. **D21 needs owner approval (PREMISE BLOCKER).** The write restriction narrows inputs the previous contract accepted, and SPEC §8 requires owner approval. **The owner approved "reject on save"**, over the alternatives of only refusing at export or printing the literal text.
+
+**Owner decision on the phone link (D22):** keep it clickable. `tel:` joins the §3.5 allowlist; `neutralizeLinks` now blanks only `irc:`/`ircs:`/`xmpp:` and other disallowed schemes.
 
 Planted faults: counting zero-width characters as visible fails 7 tests; running the backstop before the policy fails 1.
