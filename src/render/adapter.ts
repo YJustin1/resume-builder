@@ -15,6 +15,8 @@ import { ServiceError } from '../core/errors.ts';
 import type { JsonResume } from '../core/assemble.ts';
 import { countPages } from './pages.ts';
 import { enforceContentPolicy } from './policy.ts';
+import { printSessions, type PrintSession } from './puppeteer-tracked.ts';
+import type { Browser } from 'puppeteer';
 
 export interface PrintedPdf {
   bytes: Uint8Array;
@@ -38,13 +40,45 @@ type ResumedResume = Parameters<typeof resumedRender>[0];
 type ResumedTheme = Parameters<typeof resumedRender>[1];
 const theme = even as unknown as ResumedTheme;
 
+/** D20: launch, page load, font wait and print each give up after this long. */
+export const PRINT_TIMEOUT_MS = 15_000;
+const TRACKED_PUPPETEER = new URL('./puppeteer-tracked.ts', import.meta.url).href;
+
+export interface PrinterOptions {
+  timeoutMs?: number;
+  /** Extra Chrome flags (tests: the offline and black-holed-network proxies). */
+  args?: string[];
+  /** Test hook: every browser launched for this print. */
+  onBrowser?: (browser: Browser) => void;
+}
+
+/**
+ * `resumed.pdf` with Puppeteer loaded through puppeteer-tracked.ts, so every
+ * browser it launches is closed afterwards even when printing throws (D20).
+ */
+export function resumedPrinter(options: PrinterOptions = {}): RenderBackend['print'] {
+  return async (html, resume) => {
+    const session: PrintSession = { timeoutMs: options.timeoutMs ?? PRINT_TIMEOUT_MS, browsers: [] };
+    try {
+      return await printSessions.run(session, () =>
+        resumedPdf(html, resume as unknown as ResumedResume, theme, { moduleName: TRACKED_PUPPETEER, args: options.args ?? [] }),
+      );
+    } finally {
+      for (const browser of session.browsers) {
+        options.onBrowser?.(browser);
+        if (browser.connected) await browser.close().catch(() => browser.process()?.kill('SIGKILL'));
+      }
+    }
+  };
+}
+
 /**
  * The pinned pipeline. Paper is Puppeteer's default, Letter; the exported JSON
  * never carries meta.pdfRenderOptions. Chrome comes from PUPPETEER_EXECUTABLE_PATH.
  */
 export const resumedBackend: RenderBackend = {
   html: async (resume) => resumedRender(resume as unknown as ResumedResume, theme),
-  print: (html, resume) => resumedPdf(html, resume as unknown as ResumedResume, theme),
+  print: resumedPrinter(),
 };
 
 /**

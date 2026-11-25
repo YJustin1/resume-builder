@@ -4,9 +4,7 @@
 
 import { describe, expect, it } from 'vitest';
 import type { JsonResume } from '../../src/core/assemble.ts';
-import { resumedBackend } from '../../src/render/adapter.ts';
-import { pdf as resumedPdf, render as resumedRender } from 'resumed';
-import * as even from 'jsonresume-theme-even';
+import { resumedBackend, resumedPrinter } from '../../src/render/adapter.ts';
 import { readFixture } from '../support/harness.ts';
 import { allProblems, caseById, runPdfOracle } from '../support/oracle.ts';
 import { extractPdf, fullTextProblems, oracleProblems, readGolden } from '../support/pdf.ts';
@@ -137,9 +135,9 @@ describe('debugging.md #1 regression: offline fallback font splits "fi" into its
     async () => {
       // Offline as in the Phase 0 gate: every non-loopback request goes to a dead proxy.
       const doc = readFixture('security.expected.json');
-      const theme = even as unknown as Parameters<typeof resumedRender>[1];
-      const html = await resumedRender(doc, theme);
-      const bytes = await resumedPdf(html, doc, theme, { args: ['--proxy-server=127.0.0.1:9', '--proxy-bypass-list=<-loopback>'] });
+      const html = await resumedBackend.html(doc);
+      const offline = resumedPrinter({ args: ['--proxy-server=127.0.0.1:9', '--proxy-bypass-list=<-loopback>'] });
+      const bytes = await offline(html, doc);
       const oracle = readFixture('security.pdf.expected.json');
       expect(oracleProblems(oracle, await extractPdf(bytes), false)).toEqual([]);
       const broken = await extractPdf(bytes, { join: 'space' });

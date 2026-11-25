@@ -28,6 +28,7 @@
 | D17 | `basics.label` is global; `basics.summary` is **not supported** in the MVP; no per-resume headline | Approved by owner (summary excluded) |
 | D18 | The §7.3 printed-bullet check also expects the skill keywords as `<li>` (after the project highlights), because Even renders them that way; F2 must do the same | Approved by owner (2026-11-24, Phase 3) |
 | D19 | The render adapter adds a print stylesheet to Even's HTML: 0.5 in top and bottom page margins (none at the top of page 1, so Even's header band stays flush) and `li { break-inside: avoid }`. Even sets no margins and Puppeteer defaults to 0, so continuation pages started at the paper edge. Tests require text outside the margins and every bullet whole on one page | Approved by owner (2026-11-24, Phase 3 visual inspection) |
+| D20 | `resumed.pdf` loads Puppeteer through `src/render/puppeteer-tracked.ts` (its `moduleName` option). The adapter closes every browser it launched in a `finally`, because `resumed.pdf` closes it only on success; launch, page load, font wait and print time out after 15 s instead of Puppeteer's 30 s. A test requires that a black-holed font request returns `500 RENDER_FAILED` within the timeout and leaves no Chrome process | Approved by owner (2026-11-24, Phase 3) |
 
 Agents must not change any of these without owner approval.
 
@@ -111,7 +112,7 @@ Third-party software is reused and credited (§12), not claimed as original work
 
 1. **Validate:** `@jsonresume/schema@1.11.0` `validate(resume, cb)` (the package's own `jsonschema`-based validator). The schema allows additional properties, so schema validity is a weak check. Deep equality with the fixtures is the real oracle, and invalid-schema tests must use type violations.
 2. **HTML:** `resumed@7.1.0` `render(resume, theme)` with `jsonresume-theme-even@0.27.0`. `resumed.render` just calls `theme.render`. The adapter then adds the D19 print stylesheet (page margins, unbroken bullets); preview and PDF get the same HTML.
-3. **PDF:** `resumed` `pdf(html, resume, theme)`. It launches Puppeteer (`puppeteer@25.x`, a peer dependency of `resumed`), sets the HTML content and prints.
+3. **PDF:** `resumed` `pdf(html, resume, theme)`. It launches Puppeteer (`puppeteer@25.x`, a peer dependency of `resumed`), sets the HTML content and prints. Puppeteer is loaded through our launch wrapper, so a failed print still closes Chrome (D20).
    - **Browser:** install with `PUPPETEER_SKIP_DOWNLOAD=1` and set `PUPPETEER_EXECUTABLE_PATH` to an installed Chrome. Alternatively, with owner approval, run `npx puppeteer browsers install chrome` (a user-level cache).
    - **Paper:** Letter is Puppeteer's default (verified 612×792 pt). Never add `meta.pdfRenderOptions` to the exported JSON.
 4. **Page count:** read the generated PDF bytes with `pdfjs-dist@6.5.438` (also used by the tests, §7.3).
