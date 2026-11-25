@@ -36,15 +36,18 @@ export function rendersImage(text: string): boolean {
 /**
  * True when the text renders as NO visible text through the theme's Markdown
  * parser: a "[label]: url" reference definition, a "---"/"***"/"___" rule, an
- * empty code fence, a bare "*" list marker, "[]()", "&nbsp;" (Codex Phase 3
- * review, finding 6). FR-06 forbids silently dropped content. micromark escapes
- * text, so stripping its own tags and entities leaves exactly the visible text.
+ * empty code fence, a bare "*" list marker, "[]()", "&nbsp;", or only
+ * default-ignorable characters such as "&ZeroWidthSpace;" (Codex Phase 3
+ * review, findings 6 and 6/round 3). FR-06 forbids silently dropped content.
+ * micromark escapes text, so stripping its own tags and entities leaves exactly
+ * the visible text. An <img> counts as empty here; images are refused earlier
+ * by their own rule (write time) and by the content policy (render time).
  */
 export function rendersNoText(text: string): boolean {
   const visible = micromark(text)
     .replace(/<[^>]*>/g, '')
     .replace(/&(lt|gt|amp|quot|#39);/g, 'x');
-  return !/[^\s\u00a0]/.test(visible);
+  return !/[^\s\p{Default_Ignorable_Code_Point}]/u.test(visible);
 }
 
 /**

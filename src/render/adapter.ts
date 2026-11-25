@@ -102,6 +102,15 @@ export function createRenderer(overrides: Partial<RenderBackend> = {}): Renderer
   const backend: RenderBackend = { ...resumedBackend, ...overrides };
 
   async function renderHtml(resume: JsonResume): Promise<string> {
+    let html: unknown;
+    try {
+      html = await backend.html(resume);
+    } catch (error) {
+      throw renderFailed('rendering the resume to HTML failed', error);
+    }
+    if (typeof html !== 'string' || html.trim() === '') throw renderFailed('the theme produced no HTML', html);
+    const page = withPrintStylesheet(neutralizeLinks(html));
+    enforceContentPolicy(page); // first: an image-only bullet is a policy violation (409), not an empty one
     // D21 backstop for stored rows that bypassed write validation: a highlight
     // the theme would render as nothing is refused, never silently dropped (FR-06).
     for (const entry of [...resume.work, ...(resume.projects ?? [])]) {
@@ -111,15 +120,6 @@ export function createRenderer(overrides: Partial<RenderBackend> = {}): Renderer
         }
       }
     }
-    let html: unknown;
-    try {
-      html = await backend.html(resume);
-    } catch (error) {
-      throw renderFailed('rendering the resume to HTML failed', error);
-    }
-    if (typeof html !== 'string' || html.trim() === '') throw renderFailed('the theme produced no HTML', html);
-    const page = withPrintStylesheet(neutralizeLinks(html));
-    enforceContentPolicy(page);
     return page;
   }
 
