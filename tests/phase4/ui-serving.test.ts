@@ -56,6 +56,20 @@ describe('built UI served by the API server', () => {
       expect(res.status, path).toBe(404);
       expect(await res.text()).not.toContain('SECRET');
     }
+    // Round 2: a symlinked assets/ directory holding a regular, single-link database file.
+    const linkedAssets = mkdtempSync(join(tmpdir(), 'rb-ui-assets-'));
+    const outside = mkdtempSync(join(tmpdir(), 'rb-ui-outside-'));
+    try {
+      writeFileSync(join(linkedAssets, 'index.html'), '<!doctype html><title>UI</title>');
+      writeFileSync(join(outside, 'db-abc123.js'), 'SQLite format 3\u0000 SECRET');
+      symlinkSync(outside, join(linkedAssets, 'assets'));
+      const res = await createApp(freshLibrary('primary.input.json'), { uiDir: linkedAssets }).request('/assets/db-abc123.js');
+      expect(res.status).toBe(404);
+      expect(await res.text()).not.toContain('SECRET');
+    } finally {
+      rmSync(linkedAssets, { recursive: true, force: true });
+      rmSync(outside, { recursive: true, force: true });
+    }
     const linkedIndex = mkdtempSync(join(tmpdir(), 'rb-ui-index-'));
     try {
       symlinkSync(join(dir, 'library.sqlite'), join(linkedIndex, 'index.html'));

@@ -57,6 +57,39 @@ export function draftProblems(d: Draft): string[] {
   return problems;
 }
 
+/**
+ * References in the draft to records deleted in the Library since they were
+ * chosen (the editor stays mounted while the Library is open). Saving is
+ * blocked until each is replaced or removed (Codex Phase 4 verification, 6).
+ */
+export function referenceProblems(d: Draft, library: LibraryData): string[] {
+  const problems: string[] = [];
+  let missingEntries = 0;
+  let missingBullets = 0;
+  let missingWordings = 0;
+  for (const key of ['work', 'projects'] as const) {
+    for (const sel of d[key]) {
+      const entry = entriesFor(library, key).find((e) => e.id === sel.entryId);
+      if (!entry) {
+        missingEntries++;
+        continue;
+      }
+      for (const b of sel.bullets) {
+        const a = entry.accomplishments.find((x) => x.id === b.accomplishmentId);
+        if (!a) missingBullets++;
+        else if (b.variantId !== '' && !a.variants.some((v) => v.id === b.variantId)) missingWordings++;
+      }
+    }
+  }
+  const missingSkills = d.skills.filter((id) => !library.skills.some((s) => s.id === id)).length;
+  const n = (count: number, one: string, many: string) => (count === 1 ? one : `${count} ${many}`);
+  if (missingWordings) problems.push(`Choose a replacement for ${n(missingWordings, 'one bullet', 'bullets')} whose wording was deleted.`);
+  if (missingBullets) problems.push(`Remove ${n(missingBullets, 'one bullet', 'bullets')} whose accomplishment was deleted.`);
+  if (missingEntries) problems.push(`Remove ${n(missingEntries, 'one entry', 'entries')} that ${missingEntries === 1 ? 'was' : 'were'} deleted.`);
+  if (missingSkills) problems.push(`Remove ${n(missingSkills, 'one skill', 'skills')} that ${missingSkills === 1 ? 'was' : 'were'} deleted.`);
+  return problems;
+}
+
 /** Move item `index` by `delta` (-1 up, +1 down); out-of-range moves return the list unchanged. */
 export function move<T>(list: readonly T[], index: number, delta: -1 | 1): T[] {
   const to = index + delta;

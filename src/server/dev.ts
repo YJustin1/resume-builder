@@ -54,25 +54,39 @@ const identity = (path: string): string | null => {
   }
 };
 
+const realOrNull = (path: string): string | null => {
+  try {
+    return realpathSync(path);
+  } catch {
+    return null;
+  }
+};
+
 /**
- * The file a request would read, resolved through any symlink: for a
- * directory, the index.html Vite would serve from it. Null when nothing is there.
+ * Every file a request could make Vite read, resolved through symlinks. Rather
+ * than mirror Vite's static handler exactly, take all its fallbacks: the path,
+ * the path with .html/.htm, and for a directory its index, index.html and
+ * index.htm (verification round 2, finding 2).
  */
-function resolvedTarget(url: string): string | null {
+function resolvedTargets(url: string): string[] {
   let path: string;
   try {
     path = decodeURIComponent(url.split(/[?#]/)[0]!);
   } catch {
-    return null;
+    return [];
   }
   const file = path.startsWith('/@fs/') ? path.slice('/@fs'.length) : join(client, path);
-  try {
-    const real = realpathSync(file);
-    return statSync(real).isDirectory() ? realpathSync(join(real, 'index.html')) : real;
-  } catch {
-    return null; // nothing there to leak
-  }
+  const candidates = [file, `${file}.html`, `${file}.htm`, join(file, 'index'), join(file, 'index.html'), join(file, 'index.htm')];
+  return candidates.map(realOrNull).filter((p): p is string => p !== null && !isDirectory(p));
 }
+
+const isDirectory = (path: string) => {
+  try {
+    return statSync(path).isDirectory();
+  } catch {
+    return false;
+  }
+};
 
 /** Is this the database (any name: symlink or hard link), a sidecar, or reserved data? */
 function isProtected(target: string): boolean {
@@ -98,8 +112,7 @@ const boundary: Plugin = {
       // Vite checks the requested path; a symlink, a hard link or a directory index
       // inside a served directory could still lead to the database. Check the file
       // that would actually be read, by identity (review round 3, 2; verification, 2).
-      const target = resolvedTarget(url);
-      if (target && isProtected(target)) {
+      if (resolvedTargets(url).some(isProtected)) {
         res.statusCode = 403;
         res.end('Forbidden');
         return;

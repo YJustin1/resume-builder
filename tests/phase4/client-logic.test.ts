@@ -14,6 +14,7 @@ import {
   moveBullet,
   moveEntry,
   moveSkill,
+  referenceProblems,
   removeBullet,
   removeEntry,
   sameDraft,
@@ -21,7 +22,7 @@ import {
   toPayload,
 } from '../../src/client/draft.ts';
 import { createBody, patchBody, toList, valuesOf } from '../../src/client/ui.tsx';
-import type { EntryView } from '../../src/client/api.ts';
+import type { EntryView, LibraryData } from '../../src/client/api.ts';
 import { freshLibrary } from '../support/harness.ts';
 
 const security = () => fromConfiguration(freshLibrary('primary.input.json').getResume('r-security'));
@@ -86,6 +87,42 @@ describe('draft editing', () => {
       ],
     } as unknown as EntryView;
     expect(addableAccomplishments(entry, { entryId: 'e1', bullets: [{ accomplishmentId: 'a1', variantId: 'v11' }] }).map((a) => a.id)).toEqual(['a2']);
+  });
+});
+
+describe('references deleted in the Library (verification round 2, 6)', () => {
+  const library = () => {
+    const lib = freshLibrary('primary.input.json');
+    const snap = lib.snapshot();
+    const entryView = (kind: 'work' | 'project') =>
+      [...snap.entries.values()]
+        .filter((e) => e.kind === kind)
+        .map((e) => ({
+          ...e,
+          usage: 0,
+          accomplishments: [...snap.accomplishments.values()]
+            .filter((a) => a.entryId === e.id)
+            .map((a) => ({ ...a, usage: 0, variants: [...snap.variants.values()].filter((v) => v.accomplishmentId === a.id).map((v) => ({ ...v, usage: 0 })) })),
+        }));
+    return { profile: snap.profile, experiences: entryView('work'), projects: entryView('project'), skills: [], resumes: [] } as unknown as LibraryData;
+  };
+
+  it('a saved resume against the current library has none', () => {
+    expect(referenceProblems(security(), library())).toEqual([]);
+  });
+
+  it('names each kind of deleted reference', () => {
+    const lib = library();
+    const d = { ...security(), skills: ['s-gone'] };
+    const withGone = setVariant(d, 'work', 0, 0, 'v-gone'); // a wording deleted meanwhile
+    const withBullet = { ...withGone, work: withGone.work.map((s, i) => (i === 1 ? { ...s, bullets: [...s.bullets, { accomplishmentId: 'a-gone', variantId: 'v' }] } : s)) };
+    const withEntry = { ...withBullet, projects: [{ entryId: 'p-gone', bullets: [] }] };
+    expect(referenceProblems(withEntry, lib)).toEqual([
+      'Choose a replacement for one bullet whose wording was deleted.',
+      'Remove one bullet whose accomplishment was deleted.',
+      'Remove one entry that was deleted.',
+      'Remove one skill that was deleted.',
+    ]);
   });
 });
 

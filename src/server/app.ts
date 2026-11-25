@@ -3,7 +3,7 @@
 // affectedResumes? } }`. Preview and PDF export go through the rendering
 // adapter (src/render), which enforces the runtime content policy.
 
-import { lstatSync, readFileSync } from 'node:fs';
+import { lstatSync, readFileSync, realpathSync } from 'node:fs';
 import { join } from 'node:path';
 import { Hono, type Context } from 'hono';
 import { invalidInput, notFound, ServiceError } from '../core/errors.ts';
@@ -41,10 +41,14 @@ const ASSET_TYPES: Record<string, string> = {
 };
 /**
  * Read a built UI file only if it is what `vite build` writes: a regular file
- * with one link. A symlink or hard link (e.g. to a database) is never followed.
+ * with one link, whose real path is exactly the expected one under the UI
+ * directory (so no symlinked file or directory, e.g. a symlinked assets/, and
+ * no hard link can lead to a database).
  */
-function readBuiltFile(path: string): Buffer | null {
+function readBuiltFile(uiRoot: string, ...parts: string[]): Buffer | null {
   try {
+    const path = join(uiRoot, ...parts);
+    if (realpathSync(path) !== path) return null;
     const st = lstatSync(path);
     return st.isFile() && st.nlink === 1 ? readFileSync(path) : null;
   } catch {
@@ -128,7 +132,7 @@ export function createApp(lib: Library, options: AppOptions = {}): Hono {
   });
 
   if (options.uiDir) {
-    const uiDir = options.uiDir;
+    const uiDir = realpathSync(options.uiDir);
     const uiHeaders = (c: Context) => {
       c.header('Content-Security-Policy', UI_CSP);
       c.header('X-Content-Type-Options', 'nosniff');
@@ -138,7 +142,7 @@ export function createApp(lib: Library, options: AppOptions = {}): Hono {
       guard(c);
       uiHeaders(c);
       c.header('Cache-Control', 'no-store');
-      const index = readBuiltFile(join(uiDir, 'index.html'));
+      const index = readBuiltFile(uiDir, 'index.html');
       if (!index) throw notFound('no built UI');
       return c.html(index.toString('utf8'));
     });
@@ -147,7 +151,7 @@ export function createApp(lib: Library, options: AppOptions = {}): Hono {
       const file = c.req.param('file');
       const ext = ASSET_NAME.exec(file)?.[1];
       if (!ext) throw notFound(`no asset ${file}`);
-      const data = readBuiltFile(join(uiDir, 'assets', file));
+      const data = readBuiltFile(uiDir, 'assets', file);
       if (!data) throw notFound(`no asset ${file}`);
       uiHeaders(c);
       c.header('Cache-Control', 'public, max-age=31536000, immutable');

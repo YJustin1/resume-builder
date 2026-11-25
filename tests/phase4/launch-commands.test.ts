@@ -6,7 +6,7 @@
 // both the UI and the API.
 
 import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
-import { copyFileSync, existsSync, linkSync, mkdirSync, mkdtempSync, rmSync, symlinkSync } from 'node:fs';
+import { copyFileSync, existsSync, linkSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { createServer, type Server } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -173,15 +173,18 @@ describe('npm run dev (src/server/dev.ts)', () => {
     linkSync(db, join(REPO, 'src', 'client', 'hard.txt'));
     mkdirSync(join(REPO, 'src', 'client', 'dirx'));
     symlinkSync(db, join(REPO, 'src', 'client', 'dirx', 'index.html'));
+    // Round 2: Vite's other fallbacks, an extensionless index and a .html extension.
+    mkdirSync(join(REPO, 'src', 'client', 'diry'));
+    symlinkSync(db, join(REPO, 'src', 'client', 'diry', 'index'));
+    symlinkSync(db, join(REPO, 'src', 'client', 'page.html'));
     cleanup.push(() => {
-      rmSync(join(REPO, 'src', 'client', 'hard.txt'), { force: true });
-      rmSync(join(REPO, 'src', 'client', 'dirx'), { recursive: true, force: true });
+      for (const p of ['hard.txt', 'dirx', 'diry', 'page.html']) rmSync(join(REPO, 'src', 'client', p), { recursive: true, force: true });
     });
-    for (const path of ['/innocent.txt', `/@fs${join(REPO, 'src', 'client', 'innocent.txt')}`, '/innocent.txt?import', '/data-dir/library.sqlite', '/hard.txt', '/dirx/', '/dirx']) {
+    for (const path of ['/innocent.txt', `/@fs${join(REPO, 'src', 'client', 'innocent.txt')}`, '/innocent.txt?import', '/data-dir/library.sqlite', '/hard.txt', '/dirx/', '/dirx', '/diry/', '/diry', '/page']) {
       const res = await fetch(`http://127.0.0.1:${uiPort}${path}`);
       const body = Buffer.from(await res.arrayBuffer()).toString('latin1');
       expect(body.startsWith('SQLite format 3'), path).toBe(false);
-      if (!['/data-dir/library.sqlite', '/dirx'].includes(path)) expect(res.status, path).toBe(403);
+      if (!['/data-dir/library.sqlite', '/dirx', '/diry'].includes(path)) expect(res.status, path).toBe(403);
     }
     expect(await listening(apiPort)).toBe(true);
   }, 90_000);
@@ -244,6 +247,23 @@ describe('npm run dev (src/server/dev.ts)', () => {
 });
 
 describe('npm run demo (vite build, then the API serves the UI)', () => {
+  it('refuses to build into a symlinked dist/client; a personal database behind it stays byte-identical (verification round 2, 1)', async () => {
+    const root = makeRoot();
+    mkdirSync(join(root, '.data'));
+    const personal = join(root, '.data', 'library.sqlite');
+    writeFileSync(personal, 'SQLite format 3\u0000 personal data');
+    const before = readFileSync(personal);
+    rmSync(join(REPO, 'dist'), { recursive: true, force: true });
+    mkdirSync(join(REPO, 'dist'));
+    symlinkSync(join(root, '.data'), join(REPO, 'dist', 'client'));
+    cleanup.push(() => rmSync(join(REPO, 'dist'), { recursive: true, force: true }));
+    const run = launch('npm', ['run', 'demo'], env(root, { PORT: String(await freePort()) }));
+    expect(await run.exit, run.output()).not.toBe(0);
+    expect(run.output()).toMatch(/Refusing to build: .*dist\/client must be a real directory/);
+    expect(readFileSync(personal)).toEqual(before);
+    expect(readdirSync(join(root, '.data'))).toEqual(['library.sqlite']);
+  }, 150_000);
+
   it('5: after demo:seed on a fresh root, serves the UI with its CSP and the API on one port', async () => {
     const root = makeRoot();
     expect(spawnSync(process.execPath, [SEED, '--reset'], { env: env(root, {}), encoding: 'utf8' }).status).toBe(0);

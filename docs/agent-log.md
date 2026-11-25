@@ -288,4 +288,17 @@ Planted faults that fail tests: prefix-based containment, no resolved-file check
 
 Planted faults that failed tests: no build-output refusal; path comparison instead of identity; directory index ignored; the built server following links; no stale-choice validation; Edit not locked.
 
-**Check:** `npm run check` gives 358 passed, 0 todo; the smoke test passed 3 of 3 reruns.
+**Check:** `npm run check` gave 358 passed, 0 todo; the smoke test passed 3 of 3 reruns.
+
+**Round 2:** 2 blockers (deeper versions of round 1's) and 1 improvement, all addressed.
+
+- **1. The build could empty a symlinked `dist/client` (BLOCKER).** For example, with a symlink to `.data`, the build would delete the personal database. The Vite config now refuses to build unless `dist` and `dist/client` are real directories at their own paths. Regression: `npm run demo` with `dist/client` linked to a root's `.data` exits nonzero, and the personal database stays byte-identical.
+- **2. More aliases (BLOCKER).**
+  - Dev: the check now covers all of Vite's static fallbacks: the path, plus `.html`/`.htm`, and for a directory `index`, `index.html` and `index.htm`.
+  - Built server: it requires the file's real path to equal the expected path under the UI directory, which catches a symlinked `assets/`.
+  - Regressions use an extensionless `index` alias, a `.html` alias and a symlinked `assets/`.
+- **6. A draft bullet could reference a deleted wording (IMPROVE).** The bullet now shows "Deleted wording — choose another" instead of another wording. `referenceProblems` blocks saving while the draft references deleted wordings, accomplishments, entries or skills, with a message naming each.
+
+Planted faults that failed tests: no build-output check; only `index.html` checked; the built server trusting symlinked directories; saving ignoring deleted references.
+
+**Check:** `npm run check` gives 362 passed, 0 todo.

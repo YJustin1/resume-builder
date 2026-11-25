@@ -11,6 +11,7 @@ import {
   addableAccomplishments,
   draftProblems,
   entriesFor,
+  referenceProblems,
   fromConfiguration,
   moveBullet,
   moveEntry,
@@ -154,6 +155,8 @@ function SectionEditor({ library, sectionKey, draft, setDraft }: { library: Libr
                 {sel.bullets.map((b, j) => {
                   const a = entry?.accomplishments.find((x) => x.id === b.accomplishmentId);
                   const label = `bullet ${j + 1} of ${entry?.name ?? sel.entryId}`;
+                  // A wording deleted in the Library since it was chosen: show that, never another wording.
+                  const stale = b.variantId !== '' && !(a?.variants ?? []).some((v) => v.id === b.variantId);
                   return (
                     <li key={b.accomplishmentId} className="bullet">
                       <p className="fact">
@@ -161,10 +164,15 @@ function SectionEditor({ library, sectionKey, draft, setDraft }: { library: Libr
                       </p>
                       <label className="field wide">
                         <span>Wording for {label}</span>
-                        <select value={b.variantId} onChange={(e) => setDraft(setVariant(draft, sectionKey, i, j, e.target.value))} className={b.variantId === '' ? 'needs-choice' : ''}>
+                        <select value={b.variantId} onChange={(e) => setDraft(setVariant(draft, sectionKey, i, j, e.target.value))} className={b.variantId === '' || stale ? 'needs-choice' : ''}>
                           <option value="" disabled>
                             Choose a wording…
                           </option>
+                          {stale && (
+                            <option value={b.variantId} disabled>
+                              Deleted wording — choose another
+                            </option>
+                          )}
                           {(a?.variants ?? []).map((v) => (
                             <option key={v.id} value={v.id}>
                               {v.text}
@@ -414,7 +422,7 @@ export function ResumesView(props: { library: LibraryData; libraryVersion: numbe
     if (!saved || !draft) return false;
     setProblem(null);
     setStatus('');
-    const problems = draftProblems(draft);
+    const problems = [...draftProblems(draft), ...referenceProblems(draft, library)];
     if (problems.length > 0) {
       setProblem({ message: problems.join(' ') });
       return false;

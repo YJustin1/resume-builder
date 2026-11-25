@@ -365,6 +365,34 @@ describe('UI smoke test (built client, real API, headless Chrome)', () => {
     expect(lib.getVariant('v21').text).toBe('Documented and shared access review findings with the whole team.');
   }, STEP);
 
+  it('a draft bullet whose wording is deleted shows that, and saving asks for a replacement (verification round 2, 6)', async () => {
+    const kept = lib.createVariant('a4', { text: 'Kept the release checklist current.' });
+    await page.goto(`${base}/#/resumes`);
+    await page.reload(); // pick up the new wording
+    await button('Security').click();
+    await waitForText('Harbor Studio');
+    await combobox('Add a bullet to Harbor Studio').fill('a4');
+    await combobox('Wording for the new bullet').fill('v41');
+    await button('Add bullet to Harbor Studio').click();
+    await waitForText('Unsaved changes');
+
+    await page.goto(`${base}/#/library`);
+    await button('Delete wording “Maintained an internal deployment checklist.”').click(); // unused by saved resumes
+    await page.locator('dialog[open] ::-p-aria([name="Delete"][role="button"])').click();
+    await page.waitForFunction(() => !document.body.innerText.includes('Maintained an internal deployment checklist.'));
+
+    await page.goto(`${base}/#/resumes`);
+    const select = '::-p-aria([name="Wording for bullet 2 of Harbor Studio"][role="combobox"])';
+    expect(await page.$eval(select, (s) => (s as HTMLSelectElement).selectedOptions[0]!.textContent)).toBe('Deleted wording — choose another');
+    await button('Save resume').click();
+    await waitForText('Choose a replacement for one bullet whose wording was deleted.');
+    expect(lib.getResume('r-security').experiences[1]!.bullets).toHaveLength(1); // nothing saved
+    await combobox('Wording for bullet 2 of Harbor Studio').fill(kept.id);
+    await button('Save resume').click();
+    await waitForText('Saved “Security”.');
+    expect(lib.getResume('r-security').experiences[1]!.bullets.map((b) => b.variantId)).toEqual(['v31', kept.id]);
+  }, STEP);
+
   it('a pending profile save locks the profile form (review, 11)', async () => {
     await page.goto(`${base}/#/library`);
     await replaceText('Headline', 'Security Engineer');
