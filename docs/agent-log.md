@@ -185,5 +185,6 @@ The last row is an equivalent mutant, not a gap: `lstat` never reports `isFile()
 **Goldens:** the owner asked for "a codex audit [to] confirm" the candidates. Codex (`results` phase, session `rb-phase3-goldens`) found no blockers and one note: two Platform fields Even does not print. The owner then approved all three files (fixtures/README.md change log).
 
 **Visual inspection:** the owner found the Overflow continuation pages too close to the top edge. Variant C was approved as D19 (docs/decisions.md): page margins, except at the top of page 1, plus unbroken bullets, with layout checks added.
+The owner then inspected the fresh Security, Overflow and Platform PDFs: "all three look fine".
 
 **Check:** `npm run check` gives 255 passed, 0 todo.
