@@ -12,6 +12,7 @@
 import * as even from 'jsonresume-theme-even';
 import { pdf as resumedPdf, render as resumedRender } from 'resumed';
 import { ServiceError } from '../core/errors.ts';
+import { rendersNoText } from '../core/fields.ts';
 import type { JsonResume } from '../core/assemble.ts';
 import { countPages } from './pages.ts';
 import { enforceContentPolicy, neutralizeLinks } from './policy.ts';
@@ -101,6 +102,15 @@ export function createRenderer(overrides: Partial<RenderBackend> = {}): Renderer
   const backend: RenderBackend = { ...resumedBackend, ...overrides };
 
   async function renderHtml(resume: JsonResume): Promise<string> {
+    // D21 backstop for stored rows that bypassed write validation: a highlight
+    // the theme would render as nothing is refused, never silently dropped (FR-06).
+    for (const entry of [...resume.work, ...(resume.projects ?? [])]) {
+      for (const h of (entry.highlights as string[] | undefined) ?? []) {
+        if (rendersNoText(h)) {
+          throw new ServiceError('RENDER_FAILED', `a selected bullet would print nothing (Markdown with no visible text): ${JSON.stringify(h)}; edit its wording`);
+        }
+      }
+    }
     let html: unknown;
     try {
       html = await backend.html(resume);

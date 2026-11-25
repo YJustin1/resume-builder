@@ -34,6 +34,20 @@ export function rendersImage(text: string): boolean {
 }
 
 /**
+ * True when the text renders as NO visible text through the theme's Markdown
+ * parser: a "[label]: url" reference definition, a "---"/"***"/"___" rule, an
+ * empty code fence, a bare "*" list marker, "[]()", "&nbsp;" (Codex Phase 3
+ * review, finding 6). FR-06 forbids silently dropped content. micromark escapes
+ * text, so stripping its own tags and entities leaves exactly the visible text.
+ */
+export function rendersNoText(text: string): boolean {
+  const visible = micromark(text)
+    .replace(/<[^>]*>/g, '')
+    .replace(/&(lt|gt|amp|quot|#39);/g, 'x');
+  return !/[^\s\u00a0]/.test(visible);
+}
+
+/**
  * A single-line plain-text field: trimmed, nonempty, no control characters or
  * line/paragraph separators. Used for internal fields (facts, tags, resume
  * names) that are never exported.
@@ -53,6 +67,21 @@ export function plainText(value: unknown, field: string): string {
 export function text(value: unknown, field: string): string {
   const s = plainText(value, field);
   if (rendersImage(s)) throw invalidInput(`${field} must not contain Markdown that renders an image`);
+  return s;
+}
+
+/**
+ * Text the theme renders as Markdown (wording variants, i.e. highlights): the
+ * exported-text rules plus at least some visible text once rendered (D21).
+ */
+export function markdownText(value: unknown, field: string): string {
+  const s = text(value, field);
+  if (rendersNoText(s)) {
+    throw invalidInput(
+      `${field} would print nothing: the theme reads it as Markdown with no visible text ` +
+        '(for example a "[label]: url" reference definition or a "---" rule); reword it',
+    );
+  }
   return s;
 }
 

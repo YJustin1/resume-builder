@@ -4,7 +4,7 @@
 // field, and a required field can never be cleared. Unknown keys are rejected.
 
 import { invalidInput } from './errors.ts';
-import { date, dateOrder, email, onlyKeys, plainText, stringList, text, url } from './fields.ts';
+import { date, dateOrder, email, markdownText, onlyKeys, plainText, stringList, text, url } from './fields.ts';
 
 export interface FieldRule {
   required?: boolean;
@@ -75,7 +75,8 @@ export const ACCOMPLISHMENT_RULES: Rules = {
   tags: { check: stringList(plainText) },
 };
 
-export const VARIANT_RULES: Rules = { text: textRule(true) };
+// Variant text is a highlight, which the theme renders as Markdown (D9, D21).
+export const VARIANT_RULES: Rules = { text: { required: true, check: markdownText } };
 
 export const SKILL_RULES: Rules = {
   name: textRule(true),

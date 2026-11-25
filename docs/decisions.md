@@ -58,3 +58,14 @@ Each entry records the choice, the alternative, the change (commit), the check (
 5. **Candidate generator could overwrite approved goldens (IMPROVE).** It compares real paths against the actual fixture directory, and writes with `wx`.
 
 Planted faults: removing neutralization, `protocolTimeout`, the new sort, or the Security golden each fails tests; the generator refuses a symlink to `fixtures/` and an existing file.
+
+**Round 2:** no regressions in the round-1 fixes; 1 new blocker.
+
+6. **Markdown could erase a selected bullet (BLOCKER).**
+   - Variant text such as `[RFC]: https://example.com/spec` saved with `200`, but micromark reads the whole line as a reference definition, so the bullet printed empty.
+   - Probing micromark found the same for `---`/`***`/`___`, a bare code fence, `*`, `[]()` and `&nbsp;`.
+   - Fix (D21, pending owner approval):
+     - `markdownText` (src/core/fields.ts) rejects variant text whose micromark rendering has no visible text, with `400 INVALID_INPUT` and an explanation;
+     - the render adapter refuses such a stored highlight with `500 RENDER_FAILED` naming it, before rendering, so nothing is printed.
+   - Only variant text is checked, because it is the only exported field Even renders as Markdown for our documents. Names and positions print literally.
+   - Tests: `tests/phase3/empty-markdown.test.ts`. Planted faults: removing either check fails it.
