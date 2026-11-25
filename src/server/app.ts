@@ -3,7 +3,7 @@
 // affectedResumes? } }`. Preview and PDF export go through the rendering
 // adapter (src/render), which enforces the runtime content policy.
 
-import { readFileSync } from 'node:fs';
+import { lstatSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { Hono, type Context } from 'hono';
 import { invalidInput, notFound, ServiceError } from '../core/errors.ts';
@@ -39,6 +39,19 @@ const ASSET_TYPES: Record<string, string> = {
   woff2: 'font/woff2',
   map: 'application/json; charset=utf-8',
 };
+/**
+ * Read a built UI file only if it is what `vite build` writes: a regular file
+ * with one link. A symlink or hard link (e.g. to a database) is never followed.
+ */
+function readBuiltFile(path: string): Buffer | null {
+  try {
+    const st = lstatSync(path);
+    return st.isFile() && st.nlink === 1 ? readFileSync(path) : null;
+  } catch {
+    return null;
+  }
+}
+
 /** Vite emits flat, hashed file names under assets/; nothing else is served (no traversal possible). */
 const ASSET_NAME = /^[A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)*\.(js|css|svg|woff2|map)$/;
 
@@ -125,19 +138,17 @@ export function createApp(lib: Library, options: AppOptions = {}): Hono {
       guard(c);
       uiHeaders(c);
       c.header('Cache-Control', 'no-store');
-      return c.html(readFileSync(join(uiDir, 'index.html'), 'utf8'));
+      const index = readBuiltFile(join(uiDir, 'index.html'));
+      if (!index) throw notFound('no built UI');
+      return c.html(index.toString('utf8'));
     });
     app.get('/assets/:file', (c) => {
       guard(c);
       const file = c.req.param('file');
       const ext = ASSET_NAME.exec(file)?.[1];
       if (!ext) throw notFound(`no asset ${file}`);
-      let data: Buffer;
-      try {
-        data = readFileSync(join(uiDir, 'assets', file));
-      } catch {
-        throw notFound(`no asset ${file}`);
-      }
+      const data = readBuiltFile(join(uiDir, 'assets', file));
+      if (!data) throw notFound(`no asset ${file}`);
       uiHeaders(c);
       c.header('Cache-Control', 'public, max-age=31536000, immutable');
       return c.body(new Uint8Array(data), 200, { 'Content-Type': ASSET_TYPES[ext]! });

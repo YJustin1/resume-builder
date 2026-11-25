@@ -2,7 +2,7 @@
 // server serves the UI files"): its CSP, only flat hashed asset names, the
 // loopback Host check, and nothing served when no UI directory is given.
 
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { linkSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
@@ -46,6 +46,26 @@ describe('built UI served by the API server', () => {
       expect(await res.text()).not.toContain('not for the browser');
     },
   );
+
+  it('never follows a symlinked or hard-linked built file, e.g. to a database (verification, 2)', async () => {
+    writeFileSync(join(dir, 'library.sqlite'), 'SQLite format 3\u0000 SECRET');
+    symlinkSync(join(dir, 'library.sqlite'), join(dir, 'ui', 'assets', 'linked-abc123.js'));
+    linkSync(join(dir, 'library.sqlite'), join(dir, 'ui', 'assets', 'hard-abc123.css'));
+    for (const path of ['/assets/linked-abc123.js', '/assets/hard-abc123.css']) {
+      const res = await app.request(path);
+      expect(res.status, path).toBe(404);
+      expect(await res.text()).not.toContain('SECRET');
+    }
+    const linkedIndex = mkdtempSync(join(tmpdir(), 'rb-ui-index-'));
+    try {
+      symlinkSync(join(dir, 'library.sqlite'), join(linkedIndex, 'index.html'));
+      const res = await createApp(freshLibrary('primary.input.json'), { uiDir: linkedIndex }).request('/');
+      expect(res.status).toBe(404);
+      expect(await res.text()).not.toContain('SECRET');
+    } finally {
+      rmSync(linkedIndex, { recursive: true, force: true });
+    }
+  });
 
   it('UI routes require a loopback Host, like the API (DNS rebinding)', async () => {
     const res = await app.request('http://evil.example/');

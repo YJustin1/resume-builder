@@ -271,3 +271,21 @@ Planted faults that fail tests: prefix-based containment, no resolved-file check
 - Result: 3 of 3 full runs passed while that load continued.
 
 **Check:** `npm run check` gives 354 passed, 0 todo, 3 of 3 runs.
+
+### Phase 4 verification review — fresh Codex session (`rb-phase4-verify`, base `9f0493c`)
+
+**Instruction:** "You can do another review. Kill the old demo." The leftover demo server from an earlier session's scratch copy (PID 16788) was stopped.
+
+**Round 1:** 2 blockers, 2 improvements, 1 nit. None repeats an earlier finding; all addressed.
+
+1. **A personal database could live in the build output (BLOCKER).** Confirmed: `resolvePersonalDbPath` accepted `dist/client/personal.sqlite`, which `npm run demo`'s `vite build` empties. Personal mode now refuses any path inside `dist/`, which is located next to the code, like the build. This covers `dev`, `api` and the launcher.
+2. **The served file could still be the database (BLOCKER).**
+   - Dev: the middleware now compares the file that would actually be read (for a directory, its `index.html`) by device and inode against the personal and demo databases, their sidecars and the lock file. That covers hard links with innocent names, as well as symlinks.
+   - Built server: it serves only regular files with one link, never following symlinks or hard links.
+3. **Stale Add choices (IMPROVE).** Pending entry, skill, accomplishment and wording choices are re-validated against the current library; a deleted one is dropped and Add is disabled. Add-bullet buttons now have distinct accessible names ("Add bullet to <entry>").
+4. **An earlier save could close a newer edit form (IMPROVE).** A record's Edit and Delete stay disabled while its submission and refresh are pending.
+5. **The first-run Cancel did nothing (NIT).** Removed from the always-visible first-run form.
+
+Planted faults that failed tests: no build-output refusal; path comparison instead of identity; directory index ignored; the built server following links; no stale-choice validation; Edit not locked.
+
+**Check:** `npm run check` gives 358 passed, 0 todo; the smoke test passed 3 of 3 reruns.

@@ -62,6 +62,12 @@ const reserved = (demoDir: string) =>
   new PathError(`DB_PATH resolves inside the reserved demo directory (${demoDir}); use a different path`);
 
 /**
+ * The build output (`vite build` empties dist/client on every `npm run demo`),
+ * located next to the code like the build itself, not under RB_ROOT.
+ */
+const BUILD_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'dist');
+
+/**
  * Personal mode: DB_PATH, or `<repo>/.data/library.sqlite` when unset.
  * Returns the canonical target, refusing anything that is, or is inside, the
  * demo directory, or that is the same file as the demo database.
@@ -95,6 +101,11 @@ export function resolvePersonalDbPath(repoRoot: string, env: NodeJS.ProcessEnv =
     target = join(canonical(parent), basename(dbPath));
   }
   if (inside(target, demoDir)) throw reserved(demoDir);
+  // A database in the build output would be deleted by the next build (Codex Phase 4 verification, 1).
+  const buildDir = lstatOrNull(BUILD_DIR) ? canonical(BUILD_DIR) : resolve(BUILD_DIR);
+  if (inside(target, buildDir) || inside(dbPath, resolve(BUILD_DIR))) {
+    throw new PathError(`DB_PATH resolves inside the build output (${buildDir}), which every build empties; use a different path`);
+  }
   if (lstatOrNull(demoDir)) {
     // Identity checks: an ancestor that *is* the demo directory under another
     // spelling, or a hard link to the demo database.

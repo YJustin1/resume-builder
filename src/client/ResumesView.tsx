@@ -58,14 +58,18 @@ function AddBullet({ entry, selection, onAdd }: { entry: EntryView; selection: S
   const [variantId, setVariantId] = useState('');
   const addable = addableAccomplishments(entry, selection);
   const without = entry.accomplishments.filter((a) => a.variants.length === 0);
+  // Pending choices are re-validated against the current library: a wording or
+  // accomplishment deleted meanwhile (the Library is one click away) is dropped,
+  // never added by a stale ID (Codex Phase 4 verification, 3).
   const chosen = addable.find((a) => a.id === accomplishmentId);
+  const variantOk = chosen?.variants.some((v) => v.id === variantId) ?? false;
   if (addable.length === 0 && without.length === 0) return null;
   return (
     <div className="add-bullet">
       <label className="field">
         <span>Add a bullet to {entry.name}</span>
         <select
-          value={accomplishmentId}
+          value={chosen ? accomplishmentId : ''}
           onChange={(e) => {
             setAccomplishmentId(e.target.value);
             setVariantId('');
@@ -87,7 +91,7 @@ function AddBullet({ entry, selection, onAdd }: { entry: EntryView; selection: S
       {chosen && (
         <label className="field">
           <span>Wording for the new bullet</span>
-          <select value={variantId} onChange={(e) => setVariantId(e.target.value)}>
+          <select value={variantOk ? variantId : ''} onChange={(e) => setVariantId(e.target.value)}>
             <option value="">Choose a wording…</option>
             {chosen.variants.map((v) => (
               <option key={v.id} value={v.id}>
@@ -99,8 +103,10 @@ function AddBullet({ entry, selection, onAdd }: { entry: EntryView; selection: S
       )}
       <button
         type="button"
-        disabled={!chosen || variantId === ''}
+        aria-label={`Add bullet to ${entry.name}`}
+        disabled={!chosen || !variantOk}
         onClick={() => {
+          if (!chosen || !variantOk) return;
           onAdd(accomplishmentId, variantId);
           setAccomplishmentId('');
           setVariantId('');
@@ -117,6 +123,7 @@ function SectionEditor({ library, sectionKey, draft, setDraft }: { library: Libr
   const entries = entriesFor(library, sectionKey);
   const selections = draft[sectionKey];
   const unselected = entries.filter((e) => !selections.some((s) => s.entryId === e.id));
+  const pick = unselected.some((e) => e.id === toAdd) ? toAdd : ''; // a deleted entry is dropped
   const noun = sectionKey === 'work' ? 'work entry' : 'project';
   return (
     <section aria-labelledby={`sel-${sectionKey}`}>
@@ -184,7 +191,7 @@ function SectionEditor({ library, sectionKey, draft, setDraft }: { library: Libr
         <div className="add-entry">
           <label className="field">
             <span>{sectionKey === 'work' ? 'Work entry to add' : 'Project to add'}</span>
-            <select value={toAdd} onChange={(e) => setToAdd(e.target.value)}>
+            <select value={pick} onChange={(e) => setToAdd(e.target.value)}>
               <option value="">Choose…</option>
               {unselected.map((e) => (
                 <option key={e.id} value={e.id}>
@@ -195,9 +202,10 @@ function SectionEditor({ library, sectionKey, draft, setDraft }: { library: Libr
           </label>
           <button
             type="button"
-            disabled={toAdd === ''}
+            disabled={pick === ''}
             onClick={() => {
-              setDraft(addEntry(draft, sectionKey, toAdd));
+              if (pick === '') return;
+              setDraft(addEntry(draft, sectionKey, pick));
               setToAdd('');
             }}
           >
@@ -212,6 +220,7 @@ function SectionEditor({ library, sectionKey, draft, setDraft }: { library: Libr
 function SkillsEditor({ library, draft, setDraft }: { library: LibraryData; draft: Draft; setDraft: (d: Draft) => void }) {
   const [toAdd, setToAdd] = useState('');
   const unselected = library.skills.filter((s) => !draft.skills.includes(s.id));
+  const pick = unselected.some((s) => s.id === toAdd) ? toAdd : ''; // a deleted skill is dropped
   return (
     <section aria-labelledby="sel-skills">
       <h3 id="sel-skills">Skills</h3>
@@ -236,7 +245,7 @@ function SkillsEditor({ library, draft, setDraft }: { library: LibraryData; draf
         <div className="add-entry">
           <label className="field">
             <span>Skill to add</span>
-            <select value={toAdd} onChange={(e) => setToAdd(e.target.value)}>
+            <select value={pick} onChange={(e) => setToAdd(e.target.value)}>
               <option value="">Choose…</option>
               {unselected.map((s) => (
                 <option key={s.id} value={s.id}>
@@ -247,9 +256,10 @@ function SkillsEditor({ library, draft, setDraft }: { library: LibraryData; draf
           </label>
           <button
             type="button"
-            disabled={toAdd === ''}
+            disabled={pick === ''}
             onClick={() => {
-              setDraft(addSkill(draft, toAdd));
+              if (pick === '') return;
+              setDraft(addSkill(draft, pick));
               setToAdd('');
             }}
           >

@@ -13,7 +13,7 @@
 
 import { spawn, type ChildProcess } from 'node:child_process';
 import { once } from 'node:events';
-import { realpathSync } from 'node:fs';
+import { realpathSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createServer, type Plugin, type ViteDevServer } from 'vite';
@@ -38,12 +38,26 @@ for (const dir of servedDirs()) {
   if (within(dbPath, dir)) refuse(`the database ${dbPath} is inside ${dir}, which the UI dev server serves; choose a DB_PATH elsewhere`);
 }
 
-/** The database, its SQLite sidecars, and the reserved data directories, as real paths. */
-const forbidden = [dbPath, `${dbPath}-journal`, `${dbPath}-wal`, `${dbPath}-shm`];
-const forbiddenDirs = [join(realpathSync(REPO_ROOT), '.data'), join(realpathSync(REPO_ROOT), '.demo')];
+/** The reserved data directories, and the database files whose identity is protected. */
+const root = realpathSync(REPO_ROOT);
+const forbiddenDirs = [join(root, '.data'), join(root, '.demo')];
+const withSidecars = (p: string) => [p, `${p}-journal`, `${p}-wal`, `${p}-shm`];
+const protectedFiles = [...withSidecars(dbPath), ...withSidecars(join(root, '.demo', 'demo.sqlite')), join(root, '.demo', 'lock.sqlite')];
 const client = realpathSync(CLIENT_DIR);
 
-/** The file a request would read, resolved through any symlink, or null. */
+const identity = (path: string): string | null => {
+  try {
+    const st = statSync(path);
+    return `${st.dev}:${st.ino}`;
+  } catch {
+    return null;
+  }
+};
+
+/**
+ * The file a request would read, resolved through any symlink: for a
+ * directory, the index.html Vite would serve from it. Null when nothing is there.
+ */
 function resolvedTarget(url: string): string | null {
   let path: string;
   try {
@@ -53,10 +67,19 @@ function resolvedTarget(url: string): string | null {
   }
   const file = path.startsWith('/@fs/') ? path.slice('/@fs'.length) : join(client, path);
   try {
-    return realpathSync(file);
+    const real = realpathSync(file);
+    return statSync(real).isDirectory() ? realpathSync(join(real, 'index.html')) : real;
   } catch {
     return null; // nothing there to leak
   }
+}
+
+/** Is this the database (any name: symlink or hard link), a sidecar, or reserved data? */
+function isProtected(target: string): boolean {
+  if (forbiddenDirs.some((d) => within(target, d))) return true;
+  const id = identity(target);
+  // Identities are read per request: the database and its sidecars come and go.
+  return id !== null && protectedFiles.some((p) => identity(p) === id);
 }
 
 let apiReady = false;
@@ -72,10 +95,11 @@ const boundary: Plugin = {
         res.end(JSON.stringify({ error: { code: 'API_STARTING', message: 'The local API server is still starting.' } }));
         return;
       }
-      // Vite checks the requested path; a symlink inside a served directory could
-      // still lead to the database. Check the resolved file (review round 3, 2).
+      // Vite checks the requested path; a symlink, a hard link or a directory index
+      // inside a served directory could still lead to the database. Check the file
+      // that would actually be read, by identity (review round 3, 2; verification, 2).
       const target = resolvedTarget(url);
-      if (target && (forbidden.includes(target) || forbiddenDirs.some((d) => within(target, d)))) {
+      if (target && isProtected(target)) {
         res.statusCode = 403;
         res.end('Forbidden');
         return;

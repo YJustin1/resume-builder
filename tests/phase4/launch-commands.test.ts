@@ -6,7 +6,7 @@
 // both the UI and the API.
 
 import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
-import { copyFileSync, existsSync, mkdirSync, mkdtempSync, rmSync, symlinkSync } from 'node:fs';
+import { copyFileSync, existsSync, linkSync, mkdirSync, mkdtempSync, rmSync, symlinkSync } from 'node:fs';
 import { createServer, type Server } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -146,6 +146,17 @@ describe('npm run dev (src/server/dev.ts)', () => {
     expect(existsSync(join(REPO, 'src', 'client', '..private.db'))).toBe(false);
   }, 90_000);
 
+  it('a database in the build output (emptied by every build) is refused by dev and by the API (verification, 1)', async () => {
+    const root = makeRoot();
+    mkdirSync(join(REPO, 'dist', 'client'), { recursive: true }); // as after a build
+    const inBuild = join(REPO, 'dist', 'client', 'personal.sqlite');
+    await expectRefusal(root, { DB_PATH: inBuild });
+    const api = spawnSync(process.execPath, [join(REPO, 'src/server/main.ts')], { env: env(root, { DB_PATH: inBuild, PORT: '0' }), encoding: 'utf8', timeout: 30_000 });
+    expect(api.status, api.stdout + api.stderr).toBe(2);
+    expect(api.stderr).toMatch(/inside the build output/);
+    expect(existsSync(inBuild)).toBe(false);
+  }, 90_000);
+
   it('a symlink inside the client directory never serves the database it points to (review round 3, 2)', async () => {
     const root = makeRoot();
     const db = join(root, 'personal.sqlite');
@@ -157,11 +168,20 @@ describe('npm run dev (src/server/dev.ts)', () => {
       symlinkSync(target, join(REPO, 'src', 'client', name));
       cleanup.push(() => rmSync(join(REPO, 'src', 'client', name), { force: true }));
     }
-    for (const path of ['/innocent.txt', `/@fs${join(REPO, 'src', 'client', 'innocent.txt')}`, '/innocent.txt?import', '/data-dir/library.sqlite']) {
+    // Verification round, finding 2: a hard link with an allowed name, and a
+    // directory whose index.html (served for /dir/) links to the database.
+    linkSync(db, join(REPO, 'src', 'client', 'hard.txt'));
+    mkdirSync(join(REPO, 'src', 'client', 'dirx'));
+    symlinkSync(db, join(REPO, 'src', 'client', 'dirx', 'index.html'));
+    cleanup.push(() => {
+      rmSync(join(REPO, 'src', 'client', 'hard.txt'), { force: true });
+      rmSync(join(REPO, 'src', 'client', 'dirx'), { recursive: true, force: true });
+    });
+    for (const path of ['/innocent.txt', `/@fs${join(REPO, 'src', 'client', 'innocent.txt')}`, '/innocent.txt?import', '/data-dir/library.sqlite', '/hard.txt', '/dirx/', '/dirx']) {
       const res = await fetch(`http://127.0.0.1:${uiPort}${path}`);
       const body = Buffer.from(await res.arrayBuffer()).toString('latin1');
       expect(body.startsWith('SQLite format 3'), path).toBe(false);
-      if (path !== '/data-dir/library.sqlite') expect(res.status, path).toBe(403);
+      if (!['/data-dir/library.sqlite', '/dirx'].includes(path)) expect(res.status, path).toBe(403);
     }
     expect(await listening(apiPort)).toBe(true);
   }, 90_000);

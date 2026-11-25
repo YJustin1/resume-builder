@@ -242,10 +242,9 @@ describe('UI smoke test (built client, real API, headless Chrome)', () => {
   it('a new bullet needs an explicit wording choice', async () => {
     await button('Security').click();
     await combobox('Add a bullet to Harbor Studio').fill('a4'); // option values are IDs
-    const add = '::-p-aria([name="Add bullet"][role="button"])';
-    expect(await page.$$eval(add, (bs) => bs.map((b) => (b as HTMLButtonElement).disabled))).toContain(true);
+    expect(await isDisabled(ariaButton('Add bullet to Harbor Studio'))).toBe(true);
     await combobox('Wording for the new bullet').fill('v41');
-    await button('Add bullet').click();
+    await button('Add bullet to Harbor Studio').click();
     await waitForText('Unsaved changes');
     await button('Discard changes').click();
   }, STEP);
@@ -317,6 +316,53 @@ describe('UI smoke test (built client, real API, headless Chrome)', () => {
     expect(text).not.toMatch(/PDF exported|Rendering PDF…|Warning: this PDF/);
     expect(await isDisabled(ariaButton('Security'))).toBe(false);
     expect(await isDisabled(ariaButton('Download PDF'))).toBe(false); // later exports still work
+  }, STEP);
+
+  it('choices deleted in the Library meanwhile cannot be added by a stale ID (verification, 3)', async () => {
+    await page.goto(`${base}/#/resumes`);
+    await button('Engineering').click();
+    await waitForText('Harbor Studio');
+    await combobox('Add a bullet to Northwind Lab').fill('a2'); // a2: v21 (used by Security) and v22 (unused)
+    await combobox('Wording for the new bullet').fill('v22');
+    await combobox('Work entry to add').fill('e3'); // Unused Lab
+    expect(await isDisabled(ariaButton('Add bullet to Northwind Lab'))).toBe(false);
+    expect(await isDisabled(ariaButton('Add work entry'))).toBe(false);
+
+    await page.goto(`${base}/#/library`);
+    await button(`Delete wording “Automated collection of access review evidence.”`).click();
+    await page.locator('dialog[open] ::-p-aria([name="Delete"][role="button"])').click();
+    await page.waitForFunction(() => !document.body.innerText.includes('Automated collection of access review evidence.'));
+    await button('Delete Unused Lab').click();
+    await page.locator('dialog[open] ::-p-aria([name="Delete"][role="button"])').click();
+    await page.waitForFunction(() => !document.body.innerText.includes('Unused Lab'));
+
+    await page.goto(`${base}/#/resumes`);
+    expect(await isDisabled(ariaButton('Add bullet to Northwind Lab'))).toBe(true); // a2 still has v21, but v22 is gone
+    expect(await page.$eval('::-p-aria([name="Wording for the new bullet"][role="combobox"])', (s) => (s as HTMLSelectElement).value)).toBe('');
+    // Overflow Lab is still addable, but the stale Unused Lab choice is dropped.
+    expect(await page.$eval('::-p-aria([name="Work entry to add"][role="combobox"])', (s) => (s as HTMLSelectElement).value)).toBe('');
+    expect(await isDisabled(ariaButton('Add work entry'))).toBe(true);
+    expect(lib.snapshot().variants.has('v22')).toBe(false);
+  }, STEP);
+
+  it('a record’s Edit and Delete stay locked while its save is pending (verification, 4)', async () => {
+    await page.goto(`${base}/#/library`);
+    const edit = `Edit wording “${short('Documented and shared access review findings with the team.')}”`;
+    await button(edit).click();
+    await replaceText('Wording (printed as a bullet) *', 'Documented and shared access review findings with the whole team.');
+    const held = await hold(['PATCH /api/variants/v21']);
+    try {
+      await button('Save wording').click();
+      await page.waitForSelector('dialog[open]');
+      await page.locator('dialog[open] ::-p-aria([name="Save and update 1 resume"][role="button"])').click();
+      await page.waitForFunction(() => document.querySelector('fieldset[disabled]') !== null);
+      expect(await isDisabled(ariaButton(edit))).toBe(true);
+      held.release('PATCH /api/variants/v21');
+      await waitForText('Documented and shared access review findings with the whole team.');
+    } finally {
+      await held.stop();
+    }
+    expect(lib.getVariant('v21').text).toBe('Documented and shared access review findings with the whole team.');
   }, STEP);
 
   it('a pending profile save locks the profile form (review, 11)', async () => {

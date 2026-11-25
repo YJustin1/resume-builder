@@ -79,6 +79,10 @@ function RecordForm(props: {
   onSubmit: (values: FormValues) => Promise<boolean>;
   onCancel: () => void;
   legend: string;
+  /** False for an always-visible form (first run), where Cancel would do nothing. */
+  cancellable?: boolean;
+  /** Reported while a submission (impact check, prompt, write, refresh) is in flight. */
+  onBusy?: (busy: boolean) => void;
 }) {
   const [values, setValues] = useState(props.initial);
   const [problem, setProblem] = useState<Problem | null>(null);
@@ -89,6 +93,7 @@ function RecordForm(props: {
       onSubmit={async (e) => {
         e.preventDefault();
         setBusy(true);
+        props.onBusy?.(true);
         setProblem(null);
         try {
           if (await props.onSubmit(values)) props.onCancel();
@@ -96,6 +101,7 @@ function RecordForm(props: {
           setProblem(problemOf(error));
         } finally {
           setBusy(false);
+          props.onBusy?.(false);
         }
       }}
     >
@@ -120,9 +126,11 @@ function RecordForm(props: {
           <button type="submit" className="primary">
             {props.submitLabel}
           </button>
-          <button type="button" onClick={props.onCancel}>
-            Cancel
-          </button>
+          {props.cancellable !== false && (
+            <button type="button" onClick={props.onCancel}>
+              Cancel
+            </button>
+          )}
         </div>
       </fieldset>
     </form>
@@ -166,14 +174,16 @@ function RecordControls(props: {
   onDelete: () => Promise<void>;
   children?: ReactNode;
   problem: Problem | null;
+  /** A submission is in flight: Edit/Delete stay locked so it cannot close a newer form (verification, 4). */
+  busy: boolean;
 }) {
   return (
     <>
       <span className="controls">
-        <button type="button" aria-label={`Edit ${props.name}`} onClick={() => props.setEditing(!props.editing)}>
+        <button type="button" aria-label={`Edit ${props.name}`} disabled={props.busy} onClick={() => props.setEditing(!props.editing)}>
           Edit
         </button>
-        <button type="button" className="danger" aria-label={`Delete ${props.name}`} onClick={() => void props.onDelete()}>
+        <button type="button" className="danger" aria-label={`Delete ${props.name}`} disabled={props.busy} onClick={() => void props.onDelete()}>
           Delete
         </button>
       </span>
@@ -186,18 +196,22 @@ function RecordControls(props: {
 /** Shared-record editing state: the edit toggle, problems, and the checked delete. */
 function useRecord(refresh: () => Promise<void>) {
   const [editing, setEditing] = useState(false);
+  const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<Problem | null>(null);
   const checkedDelete = useCheckedDelete();
   const sharedSave = useSharedSave();
   const remove = async (...args: Parameters<typeof checkedDelete>) => {
     setProblem(null);
+    setBusy(true);
     try {
       if (await checkedDelete(...args)) await refresh();
     } catch (error) {
       setProblem(problemOf(error));
+    } finally {
+      setBusy(false);
     }
   };
-  return { editing, setEditing, problem, remove, sharedSave };
+  return { editing, setEditing, busy, setBusy, problem, remove, sharedSave };
 }
 
 // ---------------------------------------------------------------- profile and education
@@ -226,7 +240,8 @@ function ProfileSection({ profile, refresh, notice, onNotice }: { profile: Profi
           fields={PROFILE_FIELDS}
           initial={values}
           submitLabel="Create profile"
-          onCancel={() => setValues(valuesOf({}, keys(PROFILE_FIELDS)))}
+          cancellable={false}
+          onCancel={() => undefined}
           onSubmit={async (v) => {
             await api.putProfile({ ...createBody(v), education: [] });
             await refresh();
@@ -344,6 +359,7 @@ function VariantItem({ variant, refresh }: { variant: VariantView; refresh: () =
         editing={r.editing}
         setEditing={r.setEditing}
         problem={r.problem}
+        busy={r.busy}
         onDelete={() => r.remove({ op: 'delete', type: 'variant', id: variant.id }, label, '', () => api.deleteVariant(variant.id))}
       >
         <RecordForm
@@ -352,6 +368,7 @@ function VariantItem({ variant, refresh }: { variant: VariantView; refresh: () =
           initial={valuesOf(variant, ['text'])}
           submitLabel="Save wording"
           onCancel={() => r.setEditing(false)}
+          onBusy={r.setBusy}
           onSubmit={async (v) => {
             const patch = patchBody(valuesOf(variant, ['text']), v);
             if (Object.keys(patch).length === 0) return true;
@@ -386,6 +403,7 @@ function AccomplishmentItem({ accomplishment: a, refresh }: { accomplishment: Ac
           editing={r.editing}
           setEditing={r.setEditing}
           problem={r.problem}
+          busy={r.busy}
           onDelete={() =>
             r.remove(
               { op: 'delete', type: 'accomplishment', id: a.id },
@@ -401,6 +419,7 @@ function AccomplishmentItem({ accomplishment: a, refresh }: { accomplishment: Ac
             initial={valuesOf(a, keys(ACCOMPLISHMENT_FIELDS), LISTS)}
             submitLabel="Save"
             onCancel={() => r.setEditing(false)}
+          onBusy={r.setBusy}
             onSubmit={async (v) => {
               // Facts and tags are never exported: no resume changes, so no impact prompt (FR-01).
               const patch = patchBody(valuesOf(a, keys(ACCOMPLISHMENT_FIELDS), LISTS), v, LISTS);
@@ -448,6 +467,7 @@ function EntryCard({ entry, kind, refresh }: { entry: EntryView; kind: EntryKind
           editing={r.editing}
           setEditing={r.setEditing}
           problem={r.problem}
+          busy={r.busy}
           onDelete={() =>
             r.remove({ op: 'delete', type, id: entry.id }, entry.name, nested > 0 ? 'Its accomplishments and wordings are deleted with it.' : '', () =>
               api.deleteEntry(kind, entry.id),
@@ -460,6 +480,7 @@ function EntryCard({ entry, kind, refresh }: { entry: EntryView; kind: EntryKind
             initial={valuesOf(entry, keys(fields))}
             submitLabel="Save"
             onCancel={() => r.setEditing(false)}
+          onBusy={r.setBusy}
             onSubmit={async (v) => {
               const patch = patchBody(valuesOf(entry, keys(fields)), v);
               if (Object.keys(patch).length === 0) return true;
@@ -510,6 +531,7 @@ function SkillItem({ skill, refresh }: { skill: SkillView; refresh: () => Promis
         editing={r.editing}
         setEditing={r.setEditing}
         problem={r.problem}
+        busy={r.busy}
         onDelete={() => r.remove({ op: 'delete', type: 'skill', id: skill.id }, skill.name, '', () => api.deleteSkill(skill.id))}
       >
         <RecordForm
@@ -518,6 +540,7 @@ function SkillItem({ skill, refresh }: { skill: SkillView; refresh: () => Promis
           initial={valuesOf(skill, keys(SKILL_FIELDS), LISTS)}
           submitLabel="Save"
           onCancel={() => r.setEditing(false)}
+          onBusy={r.setBusy}
           onSubmit={async (v) => {
             const patch = patchBody(valuesOf(skill, keys(SKILL_FIELDS), LISTS), v, LISTS);
             if (Object.keys(patch).length === 0) return true;
